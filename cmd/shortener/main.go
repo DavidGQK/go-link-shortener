@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
@@ -11,13 +12,15 @@ import (
 	"unicode/utf8"
 )
 
-// Maps for processed links
+// Maps for processed linksF
 var shortToLong = make(map[string]string)
 var longToShort = make(map[string]string)
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const shortenedURLLength = 10
-const baseURL = "http://localhost:8080/"
+
+// Instead of baseURL there is a flag
+//const baseURL = "http://localhost:8080/"
 
 func handlerForShortening(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -54,7 +57,7 @@ func processPOST(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(shortURLStr))
 	} else {
 		id := RandStringBytes(shortenedURLLength)
-		shortURLStr = baseURL + id
+		shortURLStr = config.FlagShortURLBase + "/" + id
 
 		longToShort[longURLStr] = shortURLStr
 		shortToLong[id] = longURLStr
@@ -93,9 +96,11 @@ func RandStringBytes(n int) string {
 }
 
 func main() {
+	config.ParseFlags()
+
 	r := chi.NewRouter()
 	r.Get("/{id}", processGET)
 	r.Post("/", processPOST)
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(config.FlagServerPort, r))
 }
