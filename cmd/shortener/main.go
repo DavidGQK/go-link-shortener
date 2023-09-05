@@ -12,15 +12,12 @@ import (
 	"unicode/utf8"
 )
 
-// Maps for processed linksF
+// Maps for processed links
 var shortToLong = make(map[string]string)
 var longToShort = make(map[string]string)
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const shortenedURLLength = 10
-
-// Instead of baseURL there is a flag
-//const baseURL = "http://localhost:8080/"
 
 func handlerForShortening(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -57,7 +54,7 @@ func processPOST(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(shortURLStr))
 	} else {
 		id := RandStringBytes(shortenedURLLength)
-		shortURLStr = config.FlagShortURLBase + "/" + id
+		shortURLStr = config.ShortURLBase + "/" + id
 
 		longToShort[longURLStr] = shortURLStr
 		shortToLong[id] = longURLStr
@@ -102,5 +99,5 @@ func main() {
 	r.Get("/{id}", processGET)
 	r.Post("/", processPOST)
 
-	log.Fatal(http.ListenAndServe(config.FlagServerPort, r))
+	log.Fatal(http.ListenAndServe(config.ServerURL, r))
 }
