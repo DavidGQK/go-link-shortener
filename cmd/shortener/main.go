@@ -36,9 +36,15 @@ func processPOST(w http.ResponseWriter, r *http.Request) {
 
 	longURL, err := url.ParseRequestURI(string(initialURL))
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	longURLStr := strings.Replace(longURL.String(), "%20", "", -1)
+	if utf8.RuneCountInString(longURLStr) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	if shortURLStr, ok := longToShort[longURLStr]; ok {
 		w.Header().Set("Content-Type", "text/plain")
