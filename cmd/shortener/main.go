@@ -1,7 +1,9 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -91,11 +93,9 @@ func RandStringBytes(n int) string {
 }
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlerForShortening)
+	r := chi.NewRouter()
+	r.Get("/{id}", processGET)
+	r.Post("/", processPOST)
 
-	err := http.ListenAndServe(":8080", mux)
-	if err != nil {
-		panic(err)
-	}
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
