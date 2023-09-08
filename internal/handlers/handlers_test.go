@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func Test_processPOST(t *testing.T) {
+func Test_ProcessPOST(t *testing.T) {
 	type args struct {
 		body         string
 		responseCode int
@@ -43,7 +43,7 @@ func Test_processPOST(t *testing.T) {
 			req.Header.Set("Content-Type", "text/plain")
 			w := httptest.NewRecorder()
 
-			processPOST(w, req)
+			ProcessPOST(w, req)
 			result := w.Result()
 			defer result.Body.Close()
 
@@ -60,7 +60,7 @@ func Test_processPOST(t *testing.T) {
 	}
 }
 
-func Test_processGET(t *testing.T) {
+func Test_ProcessGET(t *testing.T) {
 	tests := []struct {
 		name         string
 		responseCode int
@@ -75,7 +75,7 @@ func Test_processGET(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/abcdf12345", nil)
 			w := httptest.NewRecorder()
 
-			processGET(w, req)
+			ProcessGET(w, req)
 			result := w.Result()
 			defer result.Body.Close()
 
