@@ -1,8 +1,7 @@
-package handlers
+package server
 
 import (
 	"github.com/DavidGQK/go-link-shortener/internal/config"
-	"github.com/DavidGQK/go-link-shortener/internal/storage"
 	"io"
 	"math/rand"
 	"net/http"
@@ -14,18 +13,26 @@ import (
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const shortenedURLLength = 10
 
-func handlerForShortening(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		ProcessPOST(w, r)
-	case http.MethodGet:
-		ProcessGET(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
+type Repository interface {
+	AddToShort(string, string)
+	GetFromShort(string) (string, bool)
+	AddToLong(string, string)
+	GetFromLong(string) (string, bool)
+}
+
+type Server struct {
+	Config  *config.Config
+	Storage Repository
+}
+
+func NewServer(s Repository) Server {
+	return Server{
+		Config:  config.GetConfig(),
+		Storage: s,
 	}
 }
 
-func ProcessPOST(w http.ResponseWriter, r *http.Request) {
+func (s Server) ProcessPOST(w http.ResponseWriter, r *http.Request) {
 	initialURL, err := io.ReadAll(r.Body)
 	if err != nil {
 		return
@@ -43,23 +50,23 @@ func ProcessPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if shortURLStr, ok := storage.LongToShort[longURLStr]; ok {
+	if shortURLStr, ok := s.Storage.GetFromLong(longURLStr); ok {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(shortURLStr))
 	} else {
 		id := makeRandStringBytes(shortenedURLLength)
-		shortURLStr = config.ShortURLBase + "/" + id
+		shortURLStr = config.AppConfig.ShortURLBase + "/" + id
 
-		storage.LongToShort[longURLStr] = shortURLStr
-		storage.ShortToLong[id] = longURLStr
+		s.Storage.AddToLong(longURLStr, shortURLStr)
+		s.Storage.AddToShort(id, longURLStr)
 
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(shortURLStr))
 	}
 }
 
-func ProcessGET(w http.ResponseWriter, r *http.Request) {
+func (s Server) ProcessGET(w http.ResponseWriter, r *http.Request) {
 	relPath := r.URL.Path
 
 	id := strings.Split(relPath, "/")[1]
@@ -68,7 +75,7 @@ func ProcessGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if longURLStr, ok := storage.ShortToLong[id]; ok {
+	if longURLStr, ok := s.Storage.GetFromShort(id); ok {
 		w.Header().Set("Location", longURLStr)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		w.Write([]byte(longURLStr))
