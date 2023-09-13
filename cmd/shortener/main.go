@@ -8,15 +8,15 @@ import (
 	"net/http"
 )
 
-func RunServer() error {
-	serverStorage := storage.NewStorage()
+func RunServer(serverStorage *storage.Storage) error {
 	s := server.NewServer(serverStorage)
 	r := router.NewRouter(s)
 	return http.ListenAndServe(s.Config.ServerURL, r)
 }
 
 func main() {
-	if err := RunServer(); err != nil {
+	db := storage.New()
+	if err := RunServer(db); err != nil {
 		log.Fatal(err)
 	}
 }

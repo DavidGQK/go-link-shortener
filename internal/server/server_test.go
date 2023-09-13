@@ -14,7 +14,7 @@ import (
 func Test_ProcessPOST(t *testing.T) {
 	type fields struct {
 		Config  *config.Config
-		Storage Repository
+		Storage repository
 	}
 
 	type want struct {
@@ -83,7 +83,7 @@ func Test_ProcessPOST(t *testing.T) {
 func Test_ProcessGET(t *testing.T) {
 	type fields struct {
 		Config  *config.Config
-		Storage Repository
+		Storage repository
 	}
 
 	type want struct {

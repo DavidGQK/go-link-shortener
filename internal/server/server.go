@@ -13,7 +13,7 @@ import (
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const shortenedURLLength = 10
 
-type Repository interface {
+type repository interface {
 	AddToShort(string, string)
 	GetFromShort(string) (string, bool)
 	AddToLong(string, string)
@@ -22,10 +22,10 @@ type Repository interface {
 
 type Server struct {
 	Config  *config.Config
-	Storage Repository
+	Storage repository
 }
 
-func NewServer(s Repository) Server {
+func NewServer(s repository) Server {
 	return Server{
 		Config:  config.GetConfig(),
 		Storage: s,
@@ -56,7 +56,8 @@ func (s Server) ProcessPOST(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(shortURLStr))
 	} else {
 		id := makeRandStringBytes(shortenedURLLength)
-		shortURLStr = config.AppConfig.ShortURLBase + "/" + id
+		//shortURLStr = config.AppConfig.ShortURLBase + "/" + id
+		shortURLStr = s.Config.ShortURLBase + "/" + id
 
 		s.Storage.AddToLong(longURLStr, shortURLStr)
 		s.Storage.AddToShort(id, longURLStr)

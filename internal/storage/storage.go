@@ -5,7 +5,7 @@ type Storage struct {
 	LongToShort map[string]string
 }
 
-func NewStorage() *Storage {
+func New() *Storage {
 	return &Storage{
 		ShortToLong: make(map[string]string),
 		LongToShort: make(map[string]string),
