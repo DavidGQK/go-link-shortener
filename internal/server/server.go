@@ -56,7 +56,6 @@ func (s Server) ProcessPOST(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(shortURLStr))
 	} else {
 		id := makeRandStringBytes(shortenedURLLength)
-		//shortURLStr = config.AppConfig.ShortURLBase + "/" + id
 		shortURLStr = s.Config.ShortURLBase + "/" + id
 
 		s.Storage.AddToLong(longURLStr, shortURLStr)

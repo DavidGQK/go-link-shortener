@@ -14,7 +14,6 @@ func loadFlagConfig(AppConfig *Config) {
 	flag.StringVar(&AppConfig.ServerURL, "a", "localhost:8080", "url where server runs on")
 	flag.StringVar(&AppConfig.ShortURLBase, "b", "http://localhost:8080", "base url for shortened link")
 	flag.Parse()
-	return
 }
 
 func loadEnvConfig(AppConfig *Config) {
