@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"io"
 	"math/rand"
 	"net/http"
@@ -21,14 +20,14 @@ type repository interface {
 }
 
 type Server struct {
-	Config  *config.Config
-	Storage repository
+	baseURL string
+	storage repository
 }
 
-func NewServer(s repository) Server {
+func NewServer(u string, s repository) Server {
 	return Server{
-		Config:  config.GetConfig(),
-		Storage: s,
+		baseURL: u,
+		storage: s,
 	}
 }
 
@@ -50,16 +49,16 @@ func (s Server) ProcessPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if shortURLStr, ok := s.Storage.GetFromLong(longURLStr); ok {
+	if shortURLStr, ok := s.storage.GetFromLong(longURLStr); ok {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(shortURLStr))
 	} else {
 		id := makeRandStringBytes(shortenedURLLength)
-		shortURLStr = s.Config.ShortURLBase + "/" + id
+		shortURLStr = s.baseURL + "/" + id
 
-		s.Storage.AddToLong(longURLStr, shortURLStr)
-		s.Storage.AddToShort(id, longURLStr)
+		s.storage.AddToLong(longURLStr, shortURLStr)
+		s.storage.AddToShort(id, longURLStr)
 
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(shortURLStr))
@@ -75,7 +74,7 @@ func (s Server) ProcessGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if longURLStr, ok := s.Storage.GetFromShort(id); ok {
+	if longURLStr, ok := s.storage.GetFromShort(id); ok {
 		w.Header().Set("Location", longURLStr)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		w.Write([]byte(longURLStr))

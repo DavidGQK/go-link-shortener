@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"github.com/DavidGQK/go-link-shortener/internal/router"
 	"github.com/DavidGQK/go-link-shortener/internal/server"
 	"github.com/DavidGQK/go-link-shortener/internal/storage"
@@ -8,15 +9,16 @@ import (
 	"net/http"
 )
 
-func RunServer(serverStorage *storage.Storage) error {
-	s := server.NewServer(serverStorage)
+func RunServer(cfg *config.Config, serverStorage *storage.Storage) error {
+	s := server.NewServer(cfg.ShortURLBase, serverStorage)
 	r := router.NewRouter(s)
-	return http.ListenAndServe(s.Config.ServerURL, r)
+	return http.ListenAndServe(cfg.ServerURL, r)
 }
 
 func main() {
 	db := storage.New()
-	if err := RunServer(db); err != nil {
+	cfg := config.GetConfig()
+	if err := RunServer(cfg, db); err != nil {
 		log.Fatal(err)
 	}
 }

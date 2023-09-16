@@ -1,10 +1,13 @@
 package server
 
-import "github.com/DavidGQK/go-link-shortener/internal/config"
+type TestConfig struct {
+	ServerURL    string
+	ShortURLBase string
+}
 
-var TestConfig = &config.Config{
+var TestCfg = TestConfig{
 	ServerURL:    "localhost:8080",
-	ShortURLBase: "http://localhost:8080",
+	ShortURLBase: "http://localhost:8080/",
 }
 
 type TestStorage struct {

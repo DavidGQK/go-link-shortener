@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -13,8 +12,8 @@ import (
 
 func Test_ProcessPOST(t *testing.T) {
 	type fields struct {
-		Config  *config.Config
-		Storage repository
+		serverURL string
+		storage   repository
 	}
 
 	type want struct {
@@ -31,8 +30,8 @@ func Test_ProcessPOST(t *testing.T) {
 			name: "Response 201 - StatusCreated",
 			body: "https://practicum.yandex.ru/",
 			fields: fields{
-				Config:  TestConfig,
-				Storage: NewTestStorage(),
+				serverURL: TestCfg.ServerURL,
+				storage:   NewTestStorage(),
 			},
 			want: want{
 				expectedCode: http.StatusCreated,
@@ -42,8 +41,8 @@ func Test_ProcessPOST(t *testing.T) {
 			name: "Response 400 - StatusBadRequest",
 			body: " ",
 			fields: fields{
-				Config:  TestConfig,
-				Storage: NewTestStorage(),
+				serverURL: TestCfg.ShortURLBase,
+				storage:   NewTestStorage(),
 			},
 			want: want{
 				expectedCode: http.StatusBadRequest,
@@ -59,8 +58,8 @@ func Test_ProcessPOST(t *testing.T) {
 			req.Header.Set("Content-Type", "text/plain")
 
 			s := Server{
-				Config:  tt.fields.Config,
-				Storage: tt.fields.Storage,
+				baseURL: tt.fields.serverURL,
+				storage: tt.fields.storage,
 			}
 
 			s.ProcessPOST(w, req)
@@ -82,8 +81,10 @@ func Test_ProcessPOST(t *testing.T) {
 
 func Test_ProcessGET(t *testing.T) {
 	type fields struct {
-		Config  *config.Config
-		Storage repository
+		serverURL string
+		baseURL   string
+		storage   repository
+		id        string
 	}
 
 	type want struct {
@@ -98,8 +99,10 @@ func Test_ProcessGET(t *testing.T) {
 		{
 			name: "Response 400 - StatusBadRequest",
 			fields: fields{
-				Config:  TestConfig,
-				Storage: NewTestStorage(),
+				serverURL: TestCfg.ServerURL,
+				baseURL:   TestCfg.ShortURLBase,
+				storage:   NewTestStorage(),
+				id:        "abcdf12345",
 			},
 			want: want{
 				expectedCode: http.StatusBadRequest,
@@ -109,12 +112,12 @@ func Test_ProcessGET(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/abcdf12345", nil)
+			req := httptest.NewRequest(http.MethodGet, tt.fields.baseURL+tt.fields.id, nil)
 			w := httptest.NewRecorder()
 
 			s := Server{
-				Config:  tt.fields.Config,
-				Storage: tt.fields.Storage,
+				baseURL: tt.fields.serverURL,
+				storage: tt.fields.storage,
 			}
 
 			s.ProcessGET(w, req)
