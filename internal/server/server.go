@@ -31,7 +31,7 @@ func NewServer(u string, s repository) Server {
 	}
 }
 
-func (s Server) ProcessPOST(w http.ResponseWriter, r *http.Request) {
+func (s Server) PostShortLink(w http.ResponseWriter, r *http.Request) {
 	initialURL, err := io.ReadAll(r.Body)
 	if err != nil {
 		return
@@ -65,7 +65,7 @@ func (s Server) ProcessPOST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Server) ProcessGET(w http.ResponseWriter, r *http.Request) {
+func (s Server) GetContent(w http.ResponseWriter, r *http.Request) {
 	relPath := r.URL.Path
 
 	id := strings.Split(relPath, "/")[1]

@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func Test_ProcessPOST(t *testing.T) {
+func Test_PostShortLink(t *testing.T) {
 	type fields struct {
 		serverURL string
 		storage   repository
@@ -62,7 +62,7 @@ func Test_ProcessPOST(t *testing.T) {
 				storage: tt.fields.storage,
 			}
 
-			s.ProcessPOST(w, req)
+			s.PostShortLink(w, req)
 			result := w.Result()
 			defer result.Body.Close()
 
@@ -79,7 +79,7 @@ func Test_ProcessPOST(t *testing.T) {
 	}
 }
 
-func Test_ProcessGET(t *testing.T) {
+func Test_GetContent(t *testing.T) {
 	type fields struct {
 		serverURL string
 		baseURL   string
@@ -120,7 +120,7 @@ func Test_ProcessGET(t *testing.T) {
 				storage: tt.fields.storage,
 			}
 
-			s.ProcessGET(w, req)
+			s.GetContent(w, req)
 			result := w.Result()
 			defer result.Body.Close()
 

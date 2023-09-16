@@ -7,8 +7,8 @@ import (
 
 func NewRouter(s server.Server) chi.Router {
 	r := chi.NewRouter()
-	r.Get("/{id}", s.ProcessGET)
-	r.Post("/", s.ProcessPOST)
+	r.Get("/{id}", s.GetContent)
+	r.Post("/", s.PostShortLink)
 
 	return r
 }
