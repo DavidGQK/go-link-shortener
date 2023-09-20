@@ -8,6 +8,7 @@ import (
 type Config struct {
 	ServerURL    string
 	ShortURLBase string
+	LoggingLevel string
 }
 
 func loadFlagConfig(AppConfig *Config) {
@@ -26,11 +27,18 @@ func loadEnvConfig(AppConfig *Config) {
 	}
 }
 
+func loadLogLevel(AppConfig *Config) {
+	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {
+		AppConfig.LoggingLevel = envLogLevel
+	}
+}
+
 func GetConfig() *Config {
 	var AppConfig Config
 
 	loadFlagConfig(&AppConfig)
 	loadEnvConfig(&AppConfig)
+	loadLogLevel(&AppConfig)
 
 	return &AppConfig
 }
