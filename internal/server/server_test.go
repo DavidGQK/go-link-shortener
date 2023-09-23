@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func Test_PostShortLink(t *testing.T) {
+func Test_PostShortenLink(t *testing.T) {
 	type fields struct {
 		serverURL string
 		storage   repository
@@ -62,7 +62,7 @@ func Test_PostShortLink(t *testing.T) {
 				storage: tt.fields.storage,
 			}
 
-			s.PostShortLink(w, req)
+			s.PostShortenLink(w, req)
 			result := w.Result()
 			defer result.Body.Close()
 
@@ -125,6 +125,75 @@ func Test_GetContent(t *testing.T) {
 			defer result.Body.Close()
 
 			assert.Equal(t, tt.want.expectedCode, result.StatusCode)
+		})
+	}
+}
+
+func Test_PostAPIShortenLink(t *testing.T) {
+	type fields struct {
+		serverURL string
+		storage   repository
+	}
+
+	type want struct {
+		expectedCode int
+	}
+
+	tests := []struct {
+		name   string
+		body   string
+		fields fields
+		want   want
+	}{
+		{
+			name: "POST API Response 201 - StatusCreated",
+			body: `{ "url": "https://practicum.yandex.ru/" }`,
+			fields: fields{
+				serverURL: TestCfg.ServerURL,
+				storage:   NewTestStorage(),
+			},
+			want: want{
+				expectedCode: http.StatusCreated,
+			},
+		},
+		{
+			name: "Response 400 - StatusBadRequest",
+			body: `{ "url": " " }`,
+			fields: fields{
+				serverURL: TestCfg.ShortURLBase,
+				storage:   NewTestStorage(),
+			},
+			want: want{
+				expectedCode: http.StatusBadRequest,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			reqBody := strings.NewReader(tt.body)
+			req := httptest.NewRequest(http.MethodPost, "/", reqBody)
+			req.Header.Set("Content-Type", "application/json")
+
+			s := Server{
+				baseURL: tt.fields.serverURL,
+				storage: tt.fields.storage,
+			}
+
+			s.PostAPIShortenLink(w, req)
+			result := w.Result()
+			defer result.Body.Close()
+
+			if tt.want.expectedCode == http.StatusCreated {
+				assert.Equal(t, tt.want.expectedCode, result.StatusCode)
+
+				resultBody, err := io.ReadAll(result.Body)
+				require.NoError(t, err)
+				assert.NotEmpty(t, string(resultBody))
+			} else {
+				assert.Equal(t, tt.want.expectedCode, result.StatusCode)
+			}
 		})
 	}
 }

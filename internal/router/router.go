@@ -9,7 +9,8 @@ import (
 func NewRouter(s server.Server) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/{id}", logger.WithLogging(s.GetContent))
-	r.Post("/", logger.WithLogging(s.PostShortLink))
+	r.Post("/", logger.WithLogging(s.PostShortenLink))
+	r.Post("/api/shorten", logger.WithLogging(s.PostAPIShortenLink))
 
 	return r
 }
