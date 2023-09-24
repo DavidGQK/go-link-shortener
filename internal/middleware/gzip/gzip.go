@@ -44,7 +44,7 @@ type compressReader struct {
 }
 
 func (c *compressReader) Read(p []byte) (n int, err error) {
-	return c.rdr.Read(p)
+	return c.zr.Read(p)
 }
 
 func (c *compressReader) Close() error {

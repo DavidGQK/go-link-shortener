@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
 	"io"
 	"math/rand"
@@ -40,6 +41,7 @@ func (s Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	longURL, err := url.ParseRequestURI(string(initialURL))
+	fmt.Println("longURL", longURL)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
