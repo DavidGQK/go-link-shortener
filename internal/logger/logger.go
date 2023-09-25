@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var Log *zap.Logger = zap.NewNop()
+var Log *zap.SugaredLogger
 
 type (
 	responseData struct {
@@ -44,12 +44,12 @@ func Initialize(level string) error {
 	if err != nil {
 		return err
 	}
-	Log = zl
+	Log = zl.Sugar()
 
 	return nil
 }
 
-func WithLogging(h http.HandlerFunc) http.HandlerFunc {
+func LoggingMiddleware(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -65,17 +65,17 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 
 		duration := time.Since(start)
 
-		Log.Info(
+		Log.Infow(
 			"HTTP request",
-			zap.String("method", r.Method),
-			zap.String("uri", r.RequestURI),
-			zap.Duration("duration", duration),
+			"method", r.Method,
+			"uri", r.RequestURI,
+			"duration", duration,
 		)
 
-		Log.Info(
+		Log.Infow(
 			"HTTP response",
-			zap.Int("status", responseData.status),
-			zap.Int("size", responseData.size),
+			"status", responseData.status,
+			"size", responseData.size,
 		)
 	}
 

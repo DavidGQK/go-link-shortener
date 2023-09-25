@@ -6,7 +6,6 @@ import (
 	"github.com/DavidGQK/go-link-shortener/internal/router"
 	"github.com/DavidGQK/go-link-shortener/internal/server"
 	"github.com/DavidGQK/go-link-shortener/internal/storage"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -18,7 +17,7 @@ func runServer(cfg *config.Config, serverStorage *storage.Storage) error {
 
 	r := router.NewRouter(s)
 
-	logger.Log.Info("server start", zap.String("address", cfg.ServerURL))
+	logger.Log.Infow("server start", "address", cfg.ServerURL)
 	return http.ListenAndServe(cfg.ServerURL, r)
 }
 
