@@ -9,8 +9,13 @@ import (
 	"net/http"
 )
 
-func runServer(cfg *config.Config, serverStorage *storage.Storage) error {
-	s := server.NewServer(cfg.ShortURLBase, serverStorage)
+func runServer(cfg *config.Config) error {
+	db, err := storage.New(cfg.Filename)
+	if err != nil {
+		return err
+	}
+
+	s := server.New(cfg, db)
 	if err := logger.Initialize(cfg.LoggingLevel); err != nil {
 		return err
 	}
@@ -22,9 +27,8 @@ func runServer(cfg *config.Config, serverStorage *storage.Storage) error {
 }
 
 func main() {
-	db := storage.New()
 	cfg := config.GetConfig()
-	if err := runServer(cfg, db); err != nil {
+	if err := runServer(cfg); err != nil {
 		panic(err)
 	}
 }
