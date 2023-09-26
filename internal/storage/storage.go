@@ -3,17 +3,16 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"os"
 )
 
-type record struct {
-	uuid        uuid.UUID `json:"uuid"`
-	shortURL    string    `json:"short_url"`
-	originalURL string    `json:"original_url"`
+type Record struct {
+	UUID        uuid.UUID `json:"UUID"`
+	ShortURL    string    `json:"short_url"`
+	OriginalURL string    `json:"original_url"`
 }
 
 type dataWriter struct {
@@ -21,7 +20,7 @@ type dataWriter struct {
 	encoder *json.Encoder
 }
 
-func (p *dataWriter) WriteData(rec *record) error {
+func (p *dataWriter) WriteData(rec *Record) error {
 	return p.encoder.Encode(rec)
 }
 
@@ -30,8 +29,7 @@ func (p *dataWriter) Close() error {
 }
 
 func NewDataWriter(filename string) (*dataWriter, error) {
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0777)
-	defer file.Close()
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		logger.Log.Error("open file error", zap.Error(err))
 		return nil, err
@@ -50,15 +48,15 @@ type Storage struct {
 }
 
 func (s *Storage) Restore() error {
-	file, err := os.OpenFile(s.filename, os.O_RDONLY|os.O_CREATE, 0777)
-	defer file.Close()
+	file, err := os.OpenFile(s.filename, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	fileScanner := bufio.NewScanner(file)
 	for fileScanner.Scan() {
-		var rec record
+		var rec Record
 		line := fileScanner.Text()
 		err = json.Unmarshal([]byte(line), &rec)
 		if err != nil {
@@ -66,7 +64,7 @@ func (s *Storage) Restore() error {
 			continue
 		}
 
-		s.links[rec.shortURL] = rec.originalURL
+		s.links[rec.ShortURL] = rec.OriginalURL
 	}
 
 	return nil
@@ -74,10 +72,10 @@ func (s *Storage) Restore() error {
 
 func (s *Storage) Add(key, value string) {
 	id := uuid.New()
-	rec := record{
-		uuid:        id,
-		shortURL:    key,
-		originalURL: value,
+	rec := Record{
+		UUID:        id,
+		ShortURL:    key,
+		OriginalURL: value,
 	}
 
 	if s.filename != "" {
@@ -90,7 +88,6 @@ func (s *Storage) Add(key, value string) {
 		defer s.dataWriter.Close()
 
 		s.dataWriter.WriteData(&rec)
-		fmt.Println("added record to the file")
 	}
 
 	s.links[key] = value
