@@ -49,7 +49,7 @@ func Initialize(level string) error {
 	return nil
 }
 
-func LoggingMiddleware(h http.Handler) http.Handler {
+func Middleware(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 

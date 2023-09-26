@@ -6,6 +6,7 @@ import (
 	"github.com/DavidGQK/go-link-shortener/internal/router"
 	"github.com/DavidGQK/go-link-shortener/internal/server"
 	"github.com/DavidGQK/go-link-shortener/internal/storage"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -13,6 +14,12 @@ func runServer(cfg *config.Config) error {
 	db, err := storage.New(cfg.Filename)
 	if err != nil {
 		return err
+	}
+
+	if cfg.Filename != "" {
+		if err := db.Restore(); err != nil {
+			logger.Log.Error("restore storage error", zap.Error(err))
+		}
 	}
 
 	s := server.New(cfg, db)

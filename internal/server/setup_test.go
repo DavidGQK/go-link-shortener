@@ -1,41 +1,37 @@
 package server
 
-type TestConfig struct {
-	ServerURL    string
-	ShortURLBase string
-}
+import "github.com/DavidGQK/go-link-shortener/internal/config"
 
-var TestCfg = TestConfig{
+//type TestConfig struct {
+//	ServerURL    string
+//	ShortURLBase string
+//}
+
+//type TestConfig struct {
+//	ServerURL    string
+//	ShortURLBase string
+//}
+
+var TestCfg = config.Config{
 	ServerURL:    "localhost:8080",
 	ShortURLBase: "http://localhost:8080/",
 }
 
 type TestStorage struct {
-	ShortToLong map[string]string
-	LongToShort map[string]string
+	links map[string]string
 }
 
 func NewTestStorage() *TestStorage {
 	return &TestStorage{
-		ShortToLong: make(map[string]string),
-		LongToShort: make(map[string]string),
+		links: make(map[string]string),
 	}
 }
 
-func (s *TestStorage) AddToShort(key, value string) {
-	s.ShortToLong[key] = value
+func (s *TestStorage) Add(key, value string) {
+	s.links[key] = value
 }
 
-func (s *TestStorage) GetFromShort(key string) (string, bool) {
-	value, found := s.ShortToLong[key]
-	return value, found
-}
-
-func (s *TestStorage) AddToLong(key, value string) {
-	s.LongToShort[key] = value
-}
-
-func (s *TestStorage) GetFromLong(key string) (string, bool) {
-	value, found := s.LongToShort[key]
+func (s *TestStorage) Get(key string) (string, bool) {
+	value, found := s.links[key]
 	return value, found
 }

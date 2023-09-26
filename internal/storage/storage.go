@@ -3,16 +3,17 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"os"
 )
 
-type Record struct {
-	UUID        uuid.UUID `json:"uuid"`
-	ShortURL    string    `json:"short_url"`
-	OriginalURL string    `json:"original_url"`
+type record struct {
+	uuid        uuid.UUID `json:"uuid"`
+	shortURL    string    `json:"short_url"`
+	originalURL string    `json:"original_url"`
 }
 
 type dataWriter struct {
@@ -20,8 +21,8 @@ type dataWriter struct {
 	encoder *json.Encoder
 }
 
-func (p *dataWriter) WriteData(record *Record) error {
-	return p.encoder.Encode(record)
+func (p *dataWriter) WriteData(rec *record) error {
+	return p.encoder.Encode(rec)
 }
 
 func (p *dataWriter) Close() error {
@@ -45,7 +46,7 @@ func NewDataWriter(filename string) (*dataWriter, error) {
 type Storage struct {
 	dataWriter *dataWriter
 	filename   string
-	Links      map[string]string
+	links      map[string]string
 }
 
 func (s *Storage) Restore() error {
@@ -57,15 +58,15 @@ func (s *Storage) Restore() error {
 
 	fileScanner := bufio.NewScanner(file)
 	for fileScanner.Scan() {
-		var record Record
+		var rec record
 		line := fileScanner.Text()
-		err = json.Unmarshal([]byte(line), &record)
+		err = json.Unmarshal([]byte(line), &rec)
 		if err != nil {
 			logger.Log.Error("data decoding error", zap.Error(err))
 			continue
 		}
 
-		s.Links[record.ShortURL] = record.OriginalURL
+		s.links[rec.shortURL] = rec.originalURL
 	}
 
 	return nil
@@ -73,10 +74,10 @@ func (s *Storage) Restore() error {
 
 func (s *Storage) Add(key, value string) {
 	id := uuid.New()
-	record := Record{
-		UUID:        id,
-		ShortURL:    key,
-		OriginalURL: value,
+	rec := record{
+		uuid:        id,
+		shortURL:    key,
+		originalURL: value,
 	}
 
 	if s.filename != "" {
@@ -88,15 +89,15 @@ func (s *Storage) Add(key, value string) {
 		s.dataWriter = dataWr
 		defer s.dataWriter.Close()
 
-		s.dataWriter.WriteData(&record)
+		s.dataWriter.WriteData(&rec)
+		fmt.Println("added record to the file")
 	}
 
-	s.Links[key] = value
-
+	s.links[key] = value
 }
 
 func (s *Storage) Get(key string) (string, bool) {
-	value, found := s.Links[key]
+	value, found := s.links[key]
 	return value, found
 }
 
@@ -106,7 +107,7 @@ func New(filename string) (*Storage, error) {
 	store := Storage{
 		dataWriter: dataWr,
 		filename:   filename,
-		Links:      make(map[string]string),
+		links:      make(map[string]string),
 	}
 
 	return &store, nil
