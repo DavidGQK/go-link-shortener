@@ -87,7 +87,10 @@ func (s *Storage) Add(key, value string) {
 		s.dataWriter = dataWr
 		defer s.dataWriter.Close()
 
-		s.dataWriter.WriteData(&rec)
+		err = s.dataWriter.WriteData(&rec)
+		if err != nil {
+			logger.Log.Error("error while writing data", zap.Error(err))
+		}
 	}
 
 	s.links[key] = value

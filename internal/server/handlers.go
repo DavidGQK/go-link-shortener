@@ -46,7 +46,11 @@ func (s Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortURLStr))
+	_, err = w.Write([]byte(shortURLStr))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }
 
 func (s Server) GetContent(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +65,11 @@ func (s Server) GetContent(w http.ResponseWriter, r *http.Request) {
 	if longURLStr, ok := s.storage.Get(id); ok {
 		w.Header().Set("Location", longURLStr)
 		w.WriteHeader(http.StatusTemporaryRedirect)
-		w.Write([]byte(longURLStr))
+		_, err := w.Write([]byte(longURLStr))
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		return
