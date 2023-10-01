@@ -11,17 +11,6 @@ import (
 	"unicode/utf8"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-const shortenedURLLength = 10
-
-func makeRandStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
-	}
-	return string(b)
-}
-
 func (s Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	initialURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -106,4 +95,15 @@ func (s Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+const shortenedURLLength = 10
+
+func makeRandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+	}
+	return string(b)
 }

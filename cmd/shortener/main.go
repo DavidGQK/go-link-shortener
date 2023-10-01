@@ -8,10 +8,29 @@ import (
 	"github.com/DavidGQK/go-link-shortener/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
 )
 
 func runServer(cfg *config.Config) error {
-	db, err := storage.New(cfg.Filename)
+	var dataWr *storage.DataWriter
+	var err error
+
+	if cfg.Filename != "" {
+		file, err := os.OpenFile(cfg.Filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			logger.Log.Error("open file error", zap.Error(err))
+			return err
+		}
+
+		dataWr, err = storage.NewDataWriter(file, cfg.Filename)
+		if err != nil {
+			logger.Log.Error("creating a new data writer error", zap.Error(err))
+			return err
+		}
+		defer dataWr.Close()
+	}
+
+	db, err := storage.New(cfg.Filename, dataWr)
 	if err != nil {
 		return err
 	}
