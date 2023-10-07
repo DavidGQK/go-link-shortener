@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
 	"io"
 	"math/rand"
@@ -11,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-func (s Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
+func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	initialURL, err := io.ReadAll(r.Body)
 	if err != nil {
 		return
@@ -42,7 +43,7 @@ func (s Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Server) GetContent(w http.ResponseWriter, r *http.Request) {
+func (s *Server) GetContent(w http.ResponseWriter, r *http.Request) {
 	relPath := r.URL.Path
 
 	id := strings.Split(relPath, "/")[1]
@@ -65,7 +66,7 @@ func (s Server) GetContent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
+func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 	var body models.RequestShortenLink
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&body); err != nil {
@@ -92,6 +93,27 @@ func (s Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(resp); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
+	if s.db == nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err := s.db.HealthCheck()
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte("Connection to DB is successful"))
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

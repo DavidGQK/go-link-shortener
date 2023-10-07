@@ -13,6 +13,7 @@ func NewRouter(s server.Server) chi.Router {
 	r.Get("/{id}", s.GetContent)
 	r.Post("/", s.PostShortenLink)
 	r.Post("/api/shorten", s.PostAPIShortenLink)
+	r.Get("/ping", s.Ping)
 
 	return r
 }

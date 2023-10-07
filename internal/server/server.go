@@ -7,9 +7,14 @@ type repository interface {
 	Get(string) (string, bool)
 }
 
+type database interface {
+	HealthCheck() error
+}
+
 type Server struct {
 	config  *config.Config
 	storage repository
+	db      database
 }
 
 func New(c *config.Config, s repository) Server {
@@ -17,4 +22,8 @@ func New(c *config.Config, s repository) Server {
 		config:  c,
 		storage: s,
 	}
+}
+
+func (s *Server) SetDB(db database) {
+	s.db = db
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/DavidGQK/go-link-shortener/cmd/database"
 	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/router"
@@ -30,20 +31,31 @@ func runServer(cfg *config.Config) error {
 		defer dataWr.Close()
 	}
 
-	db, err := storage.New(cfg.Filename, dataWr)
+	st, err := storage.New(cfg.Filename, dataWr)
 	if err != nil {
 		return err
 	}
 
 	if cfg.Filename != "" {
-		if err := db.Restore(); err != nil {
+		if err := st.Restore(); err != nil {
 			logger.Log.Error("restore storage error", zap.Error(err))
 		}
 	}
 
-	s := server.New(cfg, db)
+	s := server.New(cfg, st)
 	if err := logger.Initialize(cfg.LoggingLevel); err != nil {
 		return err
+	}
+
+	if cfg.DBConnData != "" {
+		logger.Log.Infow("connection to database was successful")
+		db, err := database.New(cfg.DBConnData)
+		if err != nil {
+			logger.Log.Error("database initialization error", zap.Error(err))
+			return err
+		}
+		defer db.Close()
+		s.SetDB(db)
 	}
 
 	r := router.NewRouter(s)
