@@ -94,7 +94,7 @@ func (s *Storage) Add(key, value string) {
 		OriginalURL: value,
 	}
 
-	if err := s.HealthCheck(); err == nil {
+	if s.mode == DBMode {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
@@ -102,7 +102,7 @@ func (s *Storage) Add(key, value string) {
 		if err != nil {
 			logger.Log.Error("error while writing data to db", zap.Error(err))
 		}
-	} else if s.filename != "" {
+	} else if s.mode == FileMode {
 		err := s.dataWriter.WriteData(&rec)
 		if err != nil {
 			logger.Log.Error("error while writing data", zap.Error(err))
