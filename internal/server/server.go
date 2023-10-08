@@ -6,6 +6,7 @@ type repository interface {
 	Add(string, string)
 	Get(string) (string, bool)
 	HealthCheck() error
+	GetMode() int
 }
 
 type Server struct {

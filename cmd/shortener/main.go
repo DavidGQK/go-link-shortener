@@ -22,7 +22,7 @@ func runServer(cfg *config.Config) error {
 			return err
 		}
 
-		dataWr, err = storage.NewDataWriter(file, cfg.Filename)
+		dataWr, err = storage.NewDataWriter(file)
 		if err != nil {
 			logger.Log.Error("creating a new data writer error", zap.Error(err))
 			return err

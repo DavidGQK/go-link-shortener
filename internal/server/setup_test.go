@@ -2,16 +2,6 @@ package server
 
 import "github.com/DavidGQK/go-link-shortener/internal/config"
 
-//type TestConfig struct {
-//	ServerURL    string
-//	ShortURLBase string
-//}
-
-//type TestConfig struct {
-//	ServerURL    string
-//	ShortURLBase string
-//}
-
 var TestCfg = config.Config{
 	ServerURL:    "localhost:8080",
 	ShortURLBase: "http://localhost:8080/",
@@ -34,4 +24,12 @@ func (s *TestStorage) Add(key, value string) {
 func (s *TestStorage) Get(key string) (string, bool) {
 	value, found := s.links[key]
 	return value, found
+}
+
+func (s *TestStorage) HealthCheck() error {
+	return nil
+}
+
+func (s *TestStorage) GetMode() int {
+	return 0
 }

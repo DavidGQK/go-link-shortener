@@ -99,6 +99,11 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
+	if s.storage.GetMode() != 2 {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	err := s.storage.HealthCheck()
 	if err != nil {
 		logger.Log.Error(err)

@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"os"
-	"reflect"
 	"time"
 )
 
@@ -23,7 +21,7 @@ type DBInterface interface {
 	FindRecord(ctx context.Context, value string) (Record, error)
 	HealthCheck() error
 	Close() error
-	Restore([]Record) error
+	CreateDBScheme() error
 	SaveRecord(context.Context, *Record) error
 }
 
@@ -46,7 +44,7 @@ func (p *DataWriter) Close() error {
 	return p.file.Close()
 }
 
-func NewDataWriter(file *os.File, filename string) (*DataWriter, error) {
+func NewDataWriter(file *os.File) (*DataWriter, error) {
 	return &DataWriter{
 		file:    file,
 		encoder: json.NewEncoder(file),
@@ -61,66 +59,32 @@ type Storage struct {
 	mode       int
 }
 
-//func (s *Storage) Restore() error {
-//	fileScanner := bufio.NewScanner(s.dataWriter.file)
-//	for fileScanner.Scan() {
-//		var rec Record
-//		line := fileScanner.Text()
-//		err := json.Unmarshal([]byte(line), &rec)
-//		if err != nil {
-//			logger.Log.Error("data decoding error", zap.Error(err))
-//			continue
-//		}
-//
-//		s.links[rec.ShortURL] = rec.OriginalURL
-//	}
-//
-//	return nil
-//}
-
 func (s *Storage) Restore() error {
-	var recs []Record
-	fileScanner := bufio.NewScanner(s.dataWriter.file)
-	for fileScanner.Scan() {
-		var rec Record
-		line := fileScanner.Text()
-		err := json.Unmarshal([]byte(line), &rec)
-		if err != nil {
-			logger.Log.Error("data decoding error", zap.Error(err))
-			continue
+
+	switch s.mode {
+	case FileMode:
+		fileScanner := bufio.NewScanner(s.dataWriter.file)
+		for fileScanner.Scan() {
+			var rec Record
+			line := fileScanner.Text()
+			err := json.Unmarshal([]byte(line), &rec)
+			if err != nil {
+				logger.Log.Error("data decoding error", zap.Error(err))
+				continue
+			}
+
+			s.links[rec.ShortURL] = rec.OriginalURL
 		}
-
-		recs = append(recs, rec)
-		s.links[rec.ShortURL] = rec.OriginalURL
-	}
-
-	if err := s.HealthCheck(); err == nil {
-		err := s.db.Restore(recs)
+	case DBMode:
+		err := s.db.CreateDBScheme()
 		if err != nil {
 			logger.Log.Error("db restoring error", zap.Error(err))
+			return err
 		}
 	}
 
 	return nil
 }
-
-//func (s *Storage) Add(key, value string) {
-//	id := uuid.New()
-//	rec := Record{
-//		UUID:        id,
-//		ShortURL:    key,
-//		OriginalURL: value,
-//	}
-//
-//	if s.filename != "" {
-//		err := s.dataWriter.WriteData(&rec)
-//		if err != nil {
-//			logger.Log.Error("error while writing data", zap.Error(err))
-//		}
-//	}
-//
-//	s.links[key] = value
-//}
 
 func (s *Storage) Add(key, value string) {
 	id := uuid.New()
@@ -148,17 +112,8 @@ func (s *Storage) Add(key, value string) {
 	s.links[key] = value
 }
 
-//func (s *Storage) Get(key string) (string, bool) {
-//	value, found := s.links[key]
-//	return value, found
-//}
-
 func (s *Storage) Get(key string) (string, bool) {
-	if err := s.HealthCheck(); err != nil {
-		logger.Log.Error("db connection error", zap.Error(err))
-		value, found := s.links[key]
-		return value, found
-	} else {
+	if s.mode == DBMode {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
@@ -169,6 +124,9 @@ func (s *Storage) Get(key string) (string, bool) {
 		}
 
 		return rec.OriginalURL, true
+	} else {
+		value, found := s.links[key]
+		return value, found
 	}
 }
 
@@ -176,11 +134,16 @@ func New(filename string, dbConnData string, dataWr *DataWriter) (*Storage, erro
 	var db *Database
 	var err error
 
+	mode := MemoryMode
+
 	if dbConnData != "" {
+		mode = DBMode
 		db, err = NewDB(dbConnData)
 		if err != nil {
 			return nil, err
 		}
+	} else if filename != "" {
+		mode = FileMode
 	}
 
 	store := Storage{
@@ -188,18 +151,20 @@ func New(filename string, dbConnData string, dataWr *DataWriter) (*Storage, erro
 		filename:   filename,
 		links:      make(map[string]string),
 		db:         db,
+		mode:       mode,
 	}
 
 	return &store, nil
 }
 
 func (s *Storage) HealthCheck() error {
-	if reflect.ValueOf(s.db).IsNil() {
-		return fmt.Errorf("nil db")
-	}
 	return s.db.HealthCheck()
 }
 
 func (s *Storage) CloseConnection() error {
 	return s.db.Close()
+}
+
+func (s *Storage) GetMode() int {
+	return s.mode
 }
