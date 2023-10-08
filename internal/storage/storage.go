@@ -13,10 +13,18 @@ import (
 	"time"
 )
 
+const (
+	MemoryMode = iota
+	FileMode
+	DBMode
+)
+
 type DBInterface interface {
 	FindRecord(ctx context.Context, value string) (Record, error)
 	HealthCheck() error
 	Close() error
+	Restore([]Record) error
+	SaveRecord(context.Context, *Record) error
 }
 
 type Record struct {
@@ -50,9 +58,28 @@ type Storage struct {
 	filename   string
 	links      map[string]string
 	db         DBInterface
+	mode       int
 }
 
+//func (s *Storage) Restore() error {
+//	fileScanner := bufio.NewScanner(s.dataWriter.file)
+//	for fileScanner.Scan() {
+//		var rec Record
+//		line := fileScanner.Text()
+//		err := json.Unmarshal([]byte(line), &rec)
+//		if err != nil {
+//			logger.Log.Error("data decoding error", zap.Error(err))
+//			continue
+//		}
+//
+//		s.links[rec.ShortURL] = rec.OriginalURL
+//	}
+//
+//	return nil
+//}
+
 func (s *Storage) Restore() error {
+	var recs []Record
 	fileScanner := bufio.NewScanner(s.dataWriter.file)
 	for fileScanner.Scan() {
 		var rec Record
@@ -63,11 +90,37 @@ func (s *Storage) Restore() error {
 			continue
 		}
 
+		recs = append(recs, rec)
 		s.links[rec.ShortURL] = rec.OriginalURL
+	}
+
+	if err := s.HealthCheck(); err == nil {
+		err := s.db.Restore(recs)
+		if err != nil {
+			logger.Log.Error("db restoring error", zap.Error(err))
+		}
 	}
 
 	return nil
 }
+
+//func (s *Storage) Add(key, value string) {
+//	id := uuid.New()
+//	rec := Record{
+//		UUID:        id,
+//		ShortURL:    key,
+//		OriginalURL: value,
+//	}
+//
+//	if s.filename != "" {
+//		err := s.dataWriter.WriteData(&rec)
+//		if err != nil {
+//			logger.Log.Error("error while writing data", zap.Error(err))
+//		}
+//	}
+//
+//	s.links[key] = value
+//}
 
 func (s *Storage) Add(key, value string) {
 	id := uuid.New()
@@ -77,7 +130,15 @@ func (s *Storage) Add(key, value string) {
 		OriginalURL: value,
 	}
 
-	if s.filename != "" {
+	if err := s.HealthCheck(); err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err := s.db.SaveRecord(ctx, &rec)
+		if err != nil {
+			logger.Log.Error("error while writing data to db", zap.Error(err))
+		}
+	} else if s.filename != "" {
 		err := s.dataWriter.WriteData(&rec)
 		if err != nil {
 			logger.Log.Error("error while writing data", zap.Error(err))
@@ -106,7 +167,7 @@ func (s *Storage) Get(key string) (string, bool) {
 			logger.Log.Error("db search query error", zap.Error(err))
 			return "", false
 		}
-		
+
 		return rec.OriginalURL, true
 	}
 }
