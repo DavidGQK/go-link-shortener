@@ -77,3 +77,30 @@ func (db *Database) CreateDBScheme() error {
 
 	return nil
 }
+
+func (db *Database) SaveRecordsBatch(ctx context.Context, records []Record) error {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		rb := tx.Rollback()
+		if rb != nil {
+			return rb
+		}
+		return err
+	}
+
+	for _, rec := range records {
+		_, err := tx.ExecContext(ctx,
+			`INSERT INTO urls(uuid, short_url, origin_url) VALUES($1, $2, $3)`,
+			rec.UUID, rec.ShortURL, rec.OriginalURL)
+		
+		if err != nil {
+			rb := tx.Rollback()
+			if rb != nil {
+				return rb
+			}
+			return err
+		}
+	}
+
+	return tx.Commit()
+}

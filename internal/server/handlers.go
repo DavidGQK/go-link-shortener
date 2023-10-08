@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
+	"github.com/DavidGQK/go-link-shortener/internal/storage"
 	"io"
 	"math/rand"
 	"net/http"
@@ -114,6 +115,51 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write([]byte("Connection to DB is successful"))
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
+	var body models.RequestBatchLinks
+	var records []storage.Record
+	var response models.ResponseBatchLinks
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	for _, el := range body {
+		id := makeRandStringBytes(shortenedURLLength)
+		shortURLStr := s.config.ShortURLBase + "/" + id
+
+		rec := storage.Record{
+			UUID:        el.CorrelationID,
+			OriginalURL: el.OriginalURL,
+			ShortURL:    id,
+		}
+
+		records = append(records, rec)
+
+		response = append(response, models.ResponseLinks{
+			CorrelationID: rec.UUID,
+			ShortURL:      shortURLStr,
+		})
+	}
+
+	err := s.storage.AddBatch(records)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(response); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

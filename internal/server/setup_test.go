@@ -1,6 +1,9 @@
 package server
 
-import "github.com/DavidGQK/go-link-shortener/internal/config"
+import (
+	"github.com/DavidGQK/go-link-shortener/internal/config"
+	"github.com/DavidGQK/go-link-shortener/internal/storage"
+)
 
 var TestCfg = config.Config{
 	ServerURL:    "localhost:8080",
@@ -32,4 +35,8 @@ func (s *TestStorage) HealthCheck() error {
 
 func (s *TestStorage) GetMode() int {
 	return 0
+}
+
+func (s *TestStorage) AddBatch(_ []storage.Record) error {
+	return nil
 }

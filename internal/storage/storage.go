@@ -23,12 +23,13 @@ type DBInterface interface {
 	Close() error
 	CreateDBScheme() error
 	SaveRecord(context.Context, *Record) error
+	SaveRecordsBatch(context.Context, []Record) error
 }
 
 type Record struct {
-	UUID        uuid.UUID `json:"UUID"`
-	ShortURL    string    `json:"short_url"`
-	OriginalURL string    `json:"original_url"`
+	UUID        string `json:"UUID"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 type DataWriter struct {
@@ -87,7 +88,7 @@ func (s *Storage) Restore() error {
 }
 
 func (s *Storage) Add(key, value string) {
-	id := uuid.New()
+	id := uuid.NewString()
 	rec := Record{
 		UUID:        id,
 		ShortURL:    key,
@@ -110,6 +111,31 @@ func (s *Storage) Add(key, value string) {
 	}
 
 	s.links[key] = value
+}
+
+func (s *Storage) AddBatch(records []Record) error {
+	if s.mode == DBMode {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err := s.db.SaveRecordsBatch(ctx, records)
+		if err != nil {
+			logger.Log.Error("error while writing data batch to db", zap.Error(err))
+		}
+	}
+
+	for _, rec := range records {
+		if s.mode == FileMode {
+			err := s.dataWriter.WriteData(&rec)
+			if err != nil {
+				logger.Log.Error("error while writing data in batch", zap.Error(err))
+			}
+		}
+
+		s.links[rec.ShortURL] = rec.OriginalURL
+	}
+
+	return nil
 }
 
 func (s *Storage) Get(key string) (string, bool) {
