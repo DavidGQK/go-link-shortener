@@ -2,12 +2,22 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"os"
+	"reflect"
+	"time"
 )
+
+type DBInterface interface {
+	FindRecord(ctx context.Context, value string) (Record, error)
+	HealthCheck() error
+	Close() error
+}
 
 type Record struct {
 	UUID        uuid.UUID `json:"UUID"`
@@ -39,6 +49,7 @@ type Storage struct {
 	dataWriter *DataWriter
 	filename   string
 	links      map[string]string
+	db         DBInterface
 }
 
 func (s *Storage) Restore() error {
@@ -76,17 +87,58 @@ func (s *Storage) Add(key, value string) {
 	s.links[key] = value
 }
 
+//func (s *Storage) Get(key string) (string, bool) {
+//	value, found := s.links[key]
+//	return value, found
+//}
+
 func (s *Storage) Get(key string) (string, bool) {
-	value, found := s.links[key]
-	return value, found
+	if err := s.HealthCheck(); err != nil {
+		logger.Log.Error("db connection error", zap.Error(err))
+		value, found := s.links[key]
+		return value, found
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		rec, err := s.db.FindRecord(ctx, key)
+		if err != nil {
+			logger.Log.Error("db search query error", zap.Error(err))
+			return "", false
+		}
+		
+		return rec.OriginalURL, true
+	}
 }
 
-func New(filename string, dataWr *DataWriter) (*Storage, error) {
+func New(filename string, dbConnData string, dataWr *DataWriter) (*Storage, error) {
+	var db *Database
+	var err error
+
+	if dbConnData != "" {
+		db, err = NewDB(dbConnData)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	store := Storage{
 		dataWriter: dataWr,
 		filename:   filename,
 		links:      make(map[string]string),
+		db:         db,
 	}
 
 	return &store, nil
+}
+
+func (s *Storage) HealthCheck() error {
+	if reflect.ValueOf(s.db).IsNil() {
+		return fmt.Errorf("nil db")
+	}
+	return s.db.HealthCheck()
+}
+
+func (s *Storage) CloseConnection() error {
+	return s.db.Close()
 }
