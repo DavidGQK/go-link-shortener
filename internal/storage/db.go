@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"time"
 )
@@ -15,7 +14,6 @@ type Database struct {
 func NewDB(dbConnData string) (*Database, error) {
 	db, err := sql.Open("pgx", dbConnData)
 	if err != nil {
-		fmt.Println("ERROR")
 		return nil, err
 	}
 
@@ -52,7 +50,7 @@ func (db *Database) FindRecord(ctx context.Context, value string) (Record, error
 
 func (db *Database) FindRecordByOriginURL(ctx context.Context, value string) (Record, error) {
 	row := db.DB.QueryRowContext(ctx,
-		`SELECT uuid, short_url, origin_url FROM urls WHERE short_url=$1 LIMIT 1`, value)
+		`SELECT uuid, short_url, origin_url FROM urls WHERE origin_url=$1 LIMIT 1`, value)
 
 	var rec Record
 	err := row.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL)
@@ -88,7 +86,7 @@ func (db *Database) CreateDBScheme() error {
 	}
 
 	_, err = db.DB.ExecContext(ctx,
-		`CREATE INDEX IF NOT EXISTS origin_url_idx on urls(origin_url)`)
+		`CREATE UNIQUE INDEX IF NOT EXISTS origin_url_idx on urls(origin_url)`)
 	if err != nil {
 		return err
 	}

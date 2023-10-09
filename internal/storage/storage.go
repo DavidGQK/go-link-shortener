@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
@@ -214,7 +213,7 @@ func (s *Storage) GetByOriginURL(originURL string) (string, error) {
 	if s.mode == DBMode {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		fmt.Println("ORIGIN URL = ", originURL)
+		
 		rec, err := s.db.FindRecordByOriginURL(ctx, originURL)
 		if err != nil {
 			return "", err
@@ -223,5 +222,5 @@ func (s *Storage) GetByOriginURL(originURL string) (string, error) {
 		return rec.ShortURL, nil
 	}
 
-	return "", errors.New("not databas mode")
+	return "", errors.New("not database mode")
 }
