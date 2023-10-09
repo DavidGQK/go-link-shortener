@@ -4,8 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"os"
 	"time"
@@ -17,8 +21,11 @@ const (
 	DBMode
 )
 
+var ErrConflict = errors.New(`already exists`)
+
 type DBInterface interface {
 	FindRecord(ctx context.Context, value string) (Record, error)
+	FindRecordByOriginURL(ctx context.Context, value string) (Record, error)
 	HealthCheck() error
 	Close() error
 	CreateDBScheme() error
@@ -87,7 +94,7 @@ func (s *Storage) Restore() error {
 	return nil
 }
 
-func (s *Storage) Add(key, value string) {
+func (s *Storage) Add(key, value string) error {
 	id := uuid.NewString()
 	rec := Record{
 		UUID:        id,
@@ -101,19 +108,27 @@ func (s *Storage) Add(key, value string) {
 
 		err := s.db.SaveRecord(ctx, &rec)
 		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+				return ErrConflict
+			}
+
 			logger.Log.Error("error while writing data to db", zap.Error(err))
+			return err
 		}
 	} else if s.mode == FileMode {
 		err := s.dataWriter.WriteData(&rec)
 		if err != nil {
 			logger.Log.Error("error while writing data", zap.Error(err))
+			return err
 		}
 	}
 
 	s.links[key] = value
+	return nil
 }
 
-func (s *Storage) AddBatch(records []Record) error {
+func (s *Storage) AddBatch(ctx context.Context, records []Record) error {
 	if s.mode == DBMode {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -150,10 +165,10 @@ func (s *Storage) Get(key string) (string, bool) {
 		}
 
 		return rec.OriginalURL, true
-	} else {
-		value, found := s.links[key]
-		return value, found
 	}
+
+	value, found := s.links[key]
+	return value, found
 }
 
 func New(filename string, dbConnData string, dataWr *DataWriter) (*Storage, error) {
@@ -193,4 +208,20 @@ func (s *Storage) CloseConnection() error {
 
 func (s *Storage) GetMode() int {
 	return s.mode
+}
+
+func (s *Storage) GetByOriginURL(originURL string) (string, error) {
+	if s.mode == DBMode {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		fmt.Println("ORIGIN URL = ", originURL)
+		rec, err := s.db.FindRecordByOriginURL(ctx, originURL)
+		if err != nil {
+			return "", err
+		}
+
+		return rec.ShortURL, nil
+	}
+
+	return "", errors.New("not databas mode")
 }

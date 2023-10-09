@@ -22,7 +22,6 @@ func NewDB(dbConnData string) (*Database, error) {
 	newDB := &Database{
 		DB: db,
 	}
-	//logger.Log.Info("connection to database was successful")
 
 	return newDB, nil
 }
@@ -39,6 +38,19 @@ func (db *Database) HealthCheck() error {
 }
 
 func (db *Database) FindRecord(ctx context.Context, value string) (Record, error) {
+	row := db.DB.QueryRowContext(ctx,
+		`SELECT uuid, short_url, origin_url FROM urls WHERE short_url=$1 LIMIT 1`, value)
+
+	var rec Record
+	err := row.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL)
+	if err != nil {
+		return rec, err
+	}
+
+	return rec, err
+}
+
+func (db *Database) FindRecordByOriginURL(ctx context.Context, value string) (Record, error) {
 	row := db.DB.QueryRowContext(ctx,
 		`SELECT uuid, short_url, origin_url FROM urls WHERE short_url=$1 LIMIT 1`, value)
 
@@ -75,6 +87,12 @@ func (db *Database) CreateDBScheme() error {
 		return err
 	}
 
+	_, err = db.DB.ExecContext(ctx,
+		`CREATE INDEX IF NOT EXISTS origin_url_idx on urls(origin_url)`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -92,7 +110,7 @@ func (db *Database) SaveRecordsBatch(ctx context.Context, records []Record) erro
 		_, err := tx.ExecContext(ctx,
 			`INSERT INTO urls(uuid, short_url, origin_url) VALUES($1, $2, $3)`,
 			rec.UUID, rec.ShortURL, rec.OriginalURL)
-		
+
 		if err != nil {
 			rb := tx.Rollback()
 			if rb != nil {

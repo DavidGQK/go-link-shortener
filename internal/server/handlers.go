@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
@@ -10,10 +11,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
 func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
+	var resp []byte
+	var respStatus int
+
 	initialURL, err := io.ReadAll(r.Body)
 	if err != nil {
 		return
@@ -32,12 +37,34 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := makeRandStringBytes(shortenedURLLength)
-	shortURLStr := s.config.ShortURLBase + "/" + id
-	s.storage.Add(id, longURLStr)
+	//shortURLStr := s.config.ShortURLBase + "/" + id
+	//s.storage.Add(id, longURLStr)
+
+	err = s.storage.Add(id, longURLStr)
+	if err != nil {
+		if err == storage.ErrConflict {
+			id, err = s.storage.GetByOriginURL(longURLStr)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			respStatus = http.StatusConflict
+			shortURLStr := s.config.ShortURLBase + "/" + id
+			resp = []byte(shortURLStr)
+		} else {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		respStatus = http.StatusCreated
+		shortURLStr := s.config.ShortURLBase + "/" + id
+		resp = []byte(shortURLStr)
+	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(shortURLStr))
+	w.WriteHeader(respStatus)
+	_, err = w.Write(resp)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -69,6 +96,9 @@ func (s *Server) GetContent(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 	var body models.RequestShortenLink
+	var resp models.ResponseShortenLink
+	var respStatus int
+
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -82,15 +112,40 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := makeRandStringBytes(shortenedURLLength)
-	shortURLStr := s.config.ShortURLBase + "/" + id
-	s.storage.Add(id, longURLStr)
+	//shortURLStr := s.config.ShortURLBase + "/" + id
+	//s.storage.Add(id, longURLStr)
+	//
+	//resp := models.ResponseShortenLink{
+	//	Result: shortURLStr,
+	//}
+	err := s.storage.Add(id, longURLStr)
+	if err != nil {
+		if err == storage.ErrConflict {
+			id, err = s.storage.GetByOriginURL(longURLStr)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 
-	resp := models.ResponseShortenLink{
-		Result: shortURLStr,
+			respStatus = http.StatusConflict
+			shortURLStr := s.config.ShortURLBase + "/" + id
+			resp = models.ResponseShortenLink{
+				Result: shortURLStr,
+			}
+		} else {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		respStatus = http.StatusCreated
+		shortURLStr := s.config.ShortURLBase + "/" + id
+		resp = models.ResponseShortenLink{
+			Result: shortURLStr,
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(respStatus)
 
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(resp); err != nil {
@@ -100,7 +155,7 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
-	if s.storage.GetMode() != 2 {
+	if s.storage.GetMode() != storage.DBMode {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -149,7 +204,9 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	err := s.storage.AddBatch(records)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := s.storage.AddBatch(ctx, records)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

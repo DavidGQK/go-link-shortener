@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"github.com/DavidGQK/go-link-shortener/internal/storage"
 )
@@ -20,8 +21,9 @@ func NewTestStorage() *TestStorage {
 	}
 }
 
-func (s *TestStorage) Add(key, value string) {
+func (s *TestStorage) Add(key, value string) error {
 	s.links[key] = value
+	return nil
 }
 
 func (s *TestStorage) Get(key string) (string, bool) {
@@ -37,6 +39,10 @@ func (s *TestStorage) GetMode() int {
 	return 0
 }
 
-func (s *TestStorage) AddBatch(_ []storage.Record) error {
+func (s *TestStorage) AddBatch(ctx context.Context, _ []storage.Record) error {
 	return nil
+}
+
+func (s *TestStorage) GetByOriginURL(_ string) (string, error) {
+	return "", nil
 }
