@@ -56,7 +56,6 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		respStatus = http.StatusCreated
-		//shortURLStr := s.config.ShortURLBase + "/" + fmt.Sprintf(id)
 		shortURLStr := fmt.Sprintf("%s/%s", s.config.ShortURLBase, id)
 		resp = []byte(shortURLStr)
 	}
@@ -121,7 +120,6 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 			}
 
 			respStatus = http.StatusConflict
-			//shortURLStr := s.config.ShortURLBase + "/" + id
 			shortURLStr := fmt.Sprintf("%s/%s", s.config.ShortURLBase, id)
 			resp = models.ResponseShortenLink{
 				Result: shortURLStr,
