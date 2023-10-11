@@ -5,32 +5,13 @@ import (
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/router"
 	"github.com/DavidGQK/go-link-shortener/internal/server"
-	"github.com/DavidGQK/go-link-shortener/internal/storage"
+	"github.com/DavidGQK/go-link-shortener/internal/storage/initstorage"
 	"go.uber.org/zap"
 	"net/http"
-	"os"
 )
 
 func runServer(cfg *config.Config) error {
-	var dataWr *storage.DataWriter
-	var err error
-
-	if cfg.Filename != "" {
-		file, err := os.OpenFile(cfg.Filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			logger.Log.Error("open file error", zap.Error(err))
-			return err
-		}
-
-		dataWr, err = storage.NewDataWriter(file)
-		if err != nil {
-			logger.Log.Error("creating a new data writer error", zap.Error(err))
-			return err
-		}
-		defer dataWr.Close()
-	}
-
-	st, err := storage.New(cfg.Filename, cfg.DBConnData, dataWr)
+	st, err := initstorage.NewStorage(cfg.Filename, cfg.DBConnData)
 	if err != nil {
 		return err
 	}

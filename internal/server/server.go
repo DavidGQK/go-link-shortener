@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"github.com/DavidGQK/go-link-shortener/internal/config"
-	"github.com/DavidGQK/go-link-shortener/internal/storage"
+	"github.com/DavidGQK/go-link-shortener/internal/models"
 )
 
 type repository interface {
@@ -11,7 +11,7 @@ type repository interface {
 	Get(string) (string, bool)
 	HealthCheck() error
 	GetMode() int
-	AddBatch(context.Context, []storage.Record) error
+	AddBatch(context.Context, []models.Record) error
 	GetByOriginURL(string) (string, error)
 }
 

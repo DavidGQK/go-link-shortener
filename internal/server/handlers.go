@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
-	"github.com/DavidGQK/go-link-shortener/internal/storage"
+	"github.com/DavidGQK/go-link-shortener/internal/storage/db"
+	"github.com/DavidGQK/go-link-shortener/internal/storage/initstorage"
 	"io"
 	"math/rand"
 	"net/http"
@@ -40,7 +41,7 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	id := makeRandStringBytes(shortenedURLLength)
 	err = s.storage.Add(id, longURLStr)
 	if err != nil {
-		if err == storage.ErrConflict {
+		if err == db.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -112,7 +113,7 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 	id := makeRandStringBytes(shortenedURLLength)
 	err := s.storage.Add(id, longURLStr)
 	if err != nil {
-		if err == storage.ErrConflict {
+		if err == db.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -147,7 +148,7 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
-	if s.storage.GetMode() != storage.DBMode {
+	if s.storage.GetMode() != initstorage.DBMode {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -169,7 +170,7 @@ func (s *Server) Ping(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 	var body models.RequestBatchLinks
-	var records []storage.Record
+	var records []models.Record
 	var response models.ResponseBatchLinks
 
 	decoder := json.NewDecoder(r.Body)
@@ -182,7 +183,7 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 		id := makeRandStringBytes(shortenedURLLength)
 		shortURLStr := s.config.ShortURLBase + "/" + id
 
-		rec := storage.Record{
+		rec := models.Record{
 			UUID:        el.CorrelationID,
 			OriginalURL: el.OriginalURL,
 			ShortURL:    id,

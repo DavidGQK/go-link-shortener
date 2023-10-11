@@ -1,5 +1,9 @@
 package models
 
+import (
+	"context"
+)
+
 type RequestShortenLink struct {
 	URL string `json:"url"`
 }
@@ -21,3 +25,19 @@ type ResponseLinks struct {
 }
 
 type ResponseBatchLinks []ResponseLinks
+
+type Record struct {
+	UUID        string `json:"UUID"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
+type StorageInterface interface {
+	Restore() error
+	Add(string, string) error
+	AddBatch(context.Context, []Record) error
+	Get(string) (string, bool)
+	GetMode() int
+	GetByOriginURL(string) (string, error)
+	HealthCheck() error
+}
