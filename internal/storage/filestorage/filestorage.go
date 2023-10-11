@@ -51,7 +51,7 @@ func NewFStor(filename string, mode int) (*FStor, error) {
 		logger.Log.Error("creating a new data writer error", zap.Error(err))
 		return nil, err
 	}
-	defer dataWr.Close()
+	//defer dataWr.Close()
 
 	newFStor := &FStor{
 		DataWriter: dataWr,
@@ -126,4 +126,8 @@ func (s *FStor) GetByOriginURL(originURL string) (string, error) {
 
 func (s *FStor) HealthCheck() error {
 	return errors.New("not database mode")
+}
+
+func (s *FStor) CloseStorage() error {
+	return s.DataWriter.Close()
 }

@@ -76,9 +76,6 @@ func (db *Database) Add(key, value string) error {
 }
 
 func (db *Database) AddBatch(ctx context.Context, records []models.Record) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	err := db.SaveRecordsBatch(ctx, records)
 	if err != nil {
 		logger.Log.Error("error while writing data batch to db", zap.Error(err))
@@ -215,4 +212,8 @@ func (db *Database) SaveRecordsBatch(ctx context.Context, records []models.Recor
 	}
 
 	return tx.Commit()
+}
+
+func (db *Database) CloseStorage() error {
+	return db.DB.Close()
 }

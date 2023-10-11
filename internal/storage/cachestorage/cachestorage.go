@@ -52,3 +52,7 @@ func (s *CacheStor) HealthCheck() error {
 func (s *CacheStor) Restore() error {
 	return errors.New("not filestorage or database mode")
 }
+
+func (s *CacheStor) CloseStorage() error {
+	return nil
+}

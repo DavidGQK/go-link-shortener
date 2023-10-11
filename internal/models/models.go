@@ -40,4 +40,5 @@ type StorageInterface interface {
 	GetMode() int
 	GetByOriginURL(string) (string, error)
 	HealthCheck() error
+	CloseStorage() error
 }
