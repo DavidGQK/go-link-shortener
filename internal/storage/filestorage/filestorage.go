@@ -13,29 +13,29 @@ import (
 )
 
 type FStor struct {
-	DataWriter *DataWriter
-	Filename   string
-	Links      map[string]string
-	Mode       int
+	dataWriter *DataWriter
+	filename   string
+	links      map[string]string
+	mode       int
 }
 
 type DataWriter struct {
-	File    *os.File
-	Encoder *json.Encoder
+	file    *os.File
+	encoder *json.Encoder
 }
 
 func (p *DataWriter) WriteData(rec *models.Record) error {
-	return p.Encoder.Encode(rec)
+	return p.encoder.Encode(rec)
 }
 
 func (p *DataWriter) Close() error {
-	return p.File.Close()
+	return p.file.Close()
 }
 
 func NewDataWriter(file *os.File) (*DataWriter, error) {
 	return &DataWriter{
-		File:    file,
-		Encoder: json.NewEncoder(file),
+		file:    file,
+		encoder: json.NewEncoder(file),
 	}, nil
 }
 
@@ -51,20 +51,19 @@ func NewFStor(filename string, mode int) (*FStor, error) {
 		logger.Log.Error("creating a new data writer error", zap.Error(err))
 		return nil, err
 	}
-	//defer dataWr.Close()
 
 	newFStor := &FStor{
-		DataWriter: dataWr,
-		Filename:   filename,
-		Mode:       mode,
-		Links:      make(map[string]string),
+		dataWriter: dataWr,
+		filename:   filename,
+		mode:       mode,
+		links:      make(map[string]string),
 	}
 
 	return newFStor, nil
 }
 
 func (s *FStor) Restore() error {
-	fileScanner := bufio.NewScanner(s.DataWriter.File)
+	fileScanner := bufio.NewScanner(s.dataWriter.file)
 	for fileScanner.Scan() {
 		var rec models.Record
 		line := fileScanner.Text()
@@ -74,7 +73,7 @@ func (s *FStor) Restore() error {
 			continue
 		}
 
-		s.Links[rec.ShortURL] = rec.OriginalURL
+		s.links[rec.ShortURL] = rec.OriginalURL
 	}
 
 	return nil
@@ -88,36 +87,36 @@ func (s *FStor) Add(key, value string) error {
 		OriginalURL: value,
 	}
 
-	err := s.DataWriter.WriteData(&rec)
+	err := s.dataWriter.WriteData(&rec)
 	if err != nil {
 		logger.Log.Error("error while writing data", zap.Error(err))
 		return err
 	}
 
-	s.Links[key] = value
+	s.links[key] = value
 	return nil
 }
 
 func (s *FStor) AddBatch(ctx context.Context, records []models.Record) error {
 	for _, rec := range records {
-		err := s.DataWriter.WriteData(&rec)
+		err := s.dataWriter.WriteData(&rec)
 		if err != nil {
 			logger.Log.Error("error while writing data in batch", zap.Error(err))
 		}
 
-		s.Links[rec.ShortURL] = rec.OriginalURL
+		s.links[rec.ShortURL] = rec.OriginalURL
 	}
 
 	return nil
 }
 
 func (s *FStor) Get(key string) (string, bool) {
-	value, found := s.Links[key]
+	value, found := s.links[key]
 	return value, found
 }
 
 func (s *FStor) GetMode() int {
-	return s.Mode
+	return s.mode
 }
 
 func (s *FStor) GetByOriginURL(originURL string) (string, error) {
@@ -129,5 +128,5 @@ func (s *FStor) HealthCheck() error {
 }
 
 func (s *FStor) CloseStorage() error {
-	return s.DataWriter.Close()
+	return s.dataWriter.Close()
 }

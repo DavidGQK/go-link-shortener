@@ -17,10 +17,10 @@ import (
 var ErrConflict = errors.New(`already exists`)
 
 type Database struct {
-	DBConnData string
+	dbConnData string
 	DB         *sql.DB
-	Mode       int
-	Links      map[string]string
+	mode       int
+	links      map[string]string
 }
 
 func NewDB(dbConnData string, mode int) (*Database, error) {
@@ -30,10 +30,10 @@ func NewDB(dbConnData string, mode int) (*Database, error) {
 	}
 
 	newDB := &Database{
-		DBConnData: dbConnData,
+		dbConnData: dbConnData,
 		DB:         db,
-		Mode:       mode,
-		Links:      make(map[string]string),
+		mode:       mode,
+		links:      make(map[string]string),
 	}
 
 	return newDB, nil
@@ -71,7 +71,7 @@ func (db *Database) Add(key, value string) error {
 		return err
 	}
 
-	db.Links[key] = value
+	db.links[key] = value
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (db *Database) AddBatch(ctx context.Context, records []models.Record) error
 	}
 
 	for _, rec := range records {
-		db.Links[rec.ShortURL] = rec.OriginalURL
+		db.links[rec.ShortURL] = rec.OriginalURL
 	}
 
 	return nil
@@ -102,7 +102,7 @@ func (db *Database) Get(key string) (string, bool) {
 }
 
 func (db *Database) GetMode() int {
-	return db.Mode
+	return db.mode
 }
 
 func (db *Database) GetByOriginURL(originURL string) (string, error) {

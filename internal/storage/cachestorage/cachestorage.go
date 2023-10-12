@@ -7,38 +7,38 @@ import (
 )
 
 type CacheStor struct {
-	Links map[string]string
-	Mode  int
+	links map[string]string
+	mode  int
 }
 
 func NewCacheStor(mode int) (*CacheStor, error) {
 	newCacheStor := &CacheStor{
-		Mode:  mode,
-		Links: make(map[string]string),
+		mode:  mode,
+		links: make(map[string]string),
 	}
 
 	return newCacheStor, nil
 }
 
 func (s *CacheStor) Add(key, value string) error {
-	s.Links[key] = value
+	s.links[key] = value
 	return nil
 }
 
 func (s *CacheStor) AddBatch(ctx context.Context, records []models.Record) error {
 	for _, rec := range records {
-		s.Links[rec.ShortURL] = rec.OriginalURL
+		s.links[rec.ShortURL] = rec.OriginalURL
 	}
 	return nil
 }
 
 func (s *CacheStor) Get(key string) (string, bool) {
-	value, found := s.Links[key]
+	value, found := s.links[key]
 	return value, found
 }
 
 func (s *CacheStor) GetMode() int {
-	return s.Mode
+	return s.mode
 }
 
 func (s *CacheStor) GetByOriginURL(originURL string) (string, error) {
