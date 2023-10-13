@@ -10,6 +10,7 @@ type Config struct {
 	ShortURLBase string
 	LoggingLevel string
 	Filename     string
+	DBConnData   string
 }
 
 func loadFlagConfig(AppConfig *Config) {
@@ -17,6 +18,7 @@ func loadFlagConfig(AppConfig *Config) {
 	flag.StringVar(&AppConfig.ShortURLBase, "b", "http://localhost:8080", "base url for shortened link")
 	flag.StringVar(&AppConfig.LoggingLevel, "l", "info", "logging level")
 	flag.StringVar(&AppConfig.Filename, "f", "/tmp/short-url-db.json", "storage")
+	flag.StringVar(&AppConfig.DBConnData, "d", "", "data for db connection")
 
 	flag.Parse()
 }
@@ -36,6 +38,10 @@ func loadEnvConfig(AppConfig *Config) {
 
 	if envFilename := os.Getenv("FILE_STORAGE_PATH"); envFilename != "" {
 		AppConfig.Filename = envFilename
+	}
+
+	if envDBConnData := os.Getenv("DATABASE_DSN"); envDBConnData != "" {
+		AppConfig.DBConnData = envDBConnData
 	}
 }
 

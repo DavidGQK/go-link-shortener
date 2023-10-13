@@ -1,10 +1,18 @@
 package server
 
-import "github.com/DavidGQK/go-link-shortener/internal/config"
+import (
+	"context"
+	"github.com/DavidGQK/go-link-shortener/internal/config"
+	"github.com/DavidGQK/go-link-shortener/internal/models"
+)
 
 type repository interface {
-	Add(string, string)
+	Add(string, string) error
 	Get(string) (string, bool)
+	HealthCheck() error
+	GetMode() int
+	AddBatch(context.Context, []models.Record) error
+	GetByOriginURL(string) (string, error)
 }
 
 type Server struct {
