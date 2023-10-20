@@ -38,8 +38,14 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cookie, err := r.Cookie("shortener_session")
+	if err != nil {
+		http.Error(w, "User unauthorized", http.StatusBadRequest)
+		return
+	}
+
 	id := makeRandStringBytes(shortenedURLLength)
-	err = s.storage.Add(id, longURLStr)
+	err = s.storage.Add(id, longURLStr, cookie.Value)
 	if err != nil {
 		if err == db.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
@@ -110,8 +116,14 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cookie, err := r.Cookie("shortener_session")
+	if err != nil {
+		http.Error(w, "User unauthorized", http.StatusBadRequest)
+		return
+	}
+
 	id := makeRandStringBytes(shortenedURLLength)
-	err := s.storage.Add(id, longURLStr)
+	err = s.storage.Add(id, longURLStr, cookie.Value)
 	if err != nil {
 		if err == db.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
@@ -211,6 +223,47 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(response); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func (s *Server) GetUserUrlsAPI(w http.ResponseWriter, r *http.Request) {
+	userCookie, err := r.Cookie("shortener_session")
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(w, "Invalid cookie", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	records, err := s.storage.GetUserRecords(ctx, userCookie.Value)
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(w, "Internal Backend Error", http.StatusInternalServerError)
+		return
+	}
+	if len(records) == 0 {
+		http.Error(w, "User doesn't have urls", http.StatusNoContent)
+		return
+	}
+
+	response := models.ResponseUserURLs{}
+	for _, rec := range records {
+		respEl := models.ResponseUserURL{
+			ShortURL:    fmt.Sprintf("%s/%s", s.config.ShortURLBase, rec.ShortURL),
+			OriginalURL: rec.OriginalURL,
+		}
+		response = append(response, respEl)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(response); err != nil {
+		http.Error(w, "Internal Backend Error", http.StatusInternalServerError)
 		return
 	}
 }

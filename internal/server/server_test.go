@@ -63,6 +63,11 @@ func Test_PostShortenLink(t *testing.T) {
 				storage: tt.fields.storage,
 			}
 
+			req.AddCookie(&http.Cookie{
+				Name:  "shortener_session",
+				Value: "test",
+			})
+
 			s.PostShortenLink(w, req)
 			result := w.Result()
 			defer result.Body.Close()
@@ -179,6 +184,11 @@ func Test_PostAPIShortenLink(t *testing.T) {
 				config:  tt.fields.config,
 				storage: tt.fields.storage,
 			}
+
+			req.AddCookie(&http.Cookie{
+				Name:  "shortener_session",
+				Value: "test",
+			})
 
 			s.PostAPIShortenLink(w, req)
 			result := w.Result()

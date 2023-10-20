@@ -49,7 +49,7 @@ func (db *Database) Restore() error {
 	return nil
 }
 
-func (db *Database) Add(key, value string) error {
+func (db *Database) Add(key, value, cookie string) error {
 	id := uuid.NewString()
 	rec := models.Record{
 		UUID:        id,
@@ -60,7 +60,12 @@ func (db *Database) Add(key, value string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := db.SaveRecord(ctx, &rec)
+	user, err := db.FindUserByCookie(ctx, cookie)
+	if err != nil {
+		return err
+	}
+
+	err = db.SaveRecord(ctx, &rec, user.UserID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
@@ -158,10 +163,10 @@ func (db *Database) Close() error {
 	return db.DB.Close()
 }
 
-func (db *Database) SaveRecord(ctx context.Context, rec *models.Record) error {
+func (db *Database) SaveRecord(ctx context.Context, rec *models.Record, userID int) error {
 	_, err := db.DB.ExecContext(ctx,
-		`INSERT INTO urls(uuid, short_url, origin_url) VALUES($1, $2, $3)`,
-		rec.UUID, rec.ShortURL, rec.OriginalURL)
+		`INSERT INTO urls(uuid, short_url, origin_url, user_id) VALUES($1, $2, $3, $4)`,
+		rec.UUID, rec.ShortURL, rec.OriginalURL, userID)
 	return err
 }
 
@@ -170,10 +175,25 @@ func (db *Database) CreateDBScheme() error {
 	defer close()
 
 	_, err := db.DB.ExecContext(ctx,
+		`CREATE TABLE IF NOT EXISTS users(
+												"id" SERIAL PRIMARY KEY,
+												"cookie" VARCHAR)`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
+		`CREATE UNIQUE INDEX IF NOT EXISTS cookie_idx on users(cookie)`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
 		`CREATE TABLE IF NOT EXISTS urls(
 												"uuid" VARCHAR,
 												"short_url" VARCHAR,
-												"origin_url" VARCHAR)`)
+												"origin_url" VARCHAR,
+												"user_id" INTEGER)`)
 	if err != nil {
 		return err
 	}
@@ -216,4 +236,91 @@ func (db *Database) SaveRecordsBatch(ctx context.Context, records []models.Recor
 
 func (db *Database) CloseStorage() error {
 	return db.DB.Close()
+}
+
+func (db *Database) FindRecordsByUserID(ctx context.Context, userID int) (records []models.Record, err error) {
+	rows, err := db.DB.QueryContext(ctx,
+		"SELECT uuid, short_url, origin_url FROM urls WHERE user_id=$1", userID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var rec models.Record
+		err = rows.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL)
+		if err != nil {
+			return
+		}
+
+		records = append(records, rec)
+	}
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (db *Database) FindUserByCookie(ctx context.Context, cookie string) (*models.User, error) {
+	row := db.DB.QueryRowContext(ctx,
+		"SELECT id, cookie FROM users WHERE cookie=$1 LIMIT 1", cookie)
+
+	var user models.User
+	err := row.Scan(&user.UserID, &user.Cookie)
+	if err != nil {
+		return &user, err
+	}
+
+	return &user, nil
+}
+
+func (db *Database) GetUserRecords(ctx context.Context, cookie string) ([]models.Record, error) {
+	user, err := db.FindUserByCookie(ctx, cookie)
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := db.FindRecordsByUserID(ctx, user.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (db *Database) FindUserByID(ctx context.Context, userID int) (*models.User, error) {
+	row := db.DB.QueryRowContext(ctx,
+		"SELECT id, cookie FROM users WHERE id=$1 LIMIT 1", userID)
+
+	var user models.User
+	err := row.Scan(&user.UserID, &user.Cookie)
+	if err != nil {
+		return &user, err
+	}
+
+	return &user, nil
+}
+
+func (db *Database) CreateUser(ctx context.Context) (*models.User, error) {
+	_, err := db.DB.ExecContext(ctx, `INSERT INTO users DEFAULT VALUES`)
+	if err != nil {
+		return nil, err
+	}
+
+	row := db.DB.QueryRowContext(ctx,
+		"SELECT id FROM users ORDER BY id DESC LIMIT 1")
+	var user models.User
+	err = row.Scan(&user.UserID)
+	if err != nil {
+		return &user, err
+	}
+
+	return &user, nil
+}
+
+func (db *Database) UpdateUser(ctx context.Context, id int, cookie string) error {
+	_, err := db.DB.ExecContext(ctx, `UPDATE users SET cookie=$1 WHERE id=$2`, cookie, id)
+	return err
 }

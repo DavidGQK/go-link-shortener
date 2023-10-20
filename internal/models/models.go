@@ -34,11 +34,27 @@ type Record struct {
 
 type StorageInterface interface {
 	Restore() error
-	Add(string, string) error
+	Add(string, string, string) error
 	AddBatch(context.Context, []Record) error
 	Get(string) (string, bool)
 	GetMode() int
 	GetByOriginURL(string) (string, error)
 	HealthCheck() error
 	CloseStorage() error
+	GetUserRecords(context.Context, string) ([]Record, error)
+	FindUserByID(context.Context, int) (*User, error)
+	CreateUser(context.Context) (*User, error)
+	UpdateUser(context.Context, int, string) error
+}
+
+type User struct {
+	UserID int    `json:"user_id"`
+	Cookie string `json:"cookie"`
+}
+
+type ResponseUserURLs []ResponseUserURL
+
+type ResponseUserURL struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
