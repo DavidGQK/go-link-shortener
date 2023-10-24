@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
-	"github.com/DavidGQK/go-link-shortener/internal/storage/db"
 	"github.com/DavidGQK/go-link-shortener/internal/storage/initstorage"
 	"io"
 	"math/rand"
@@ -47,7 +46,7 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	id := makeRandStringBytes(shortenedURLLength)
 	err = s.storage.Add(id, longURLStr, cookie.Value)
 	if err != nil {
-		if err == db.ErrConflict {
+		if err == models.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -85,7 +84,7 @@ func (s *Server) GetContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if longURLStr, ok := s.storage.Get(id); ok {
+	if longURLStr, err := s.storage.Get(id); err == nil {
 		w.Header().Set("Location", longURLStr)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		_, err := w.Write([]byte(longURLStr))
@@ -94,6 +93,10 @@ func (s *Server) GetContent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		if err == models.ErrDeleted {
+			http.Error(w, "URL was deleted", http.StatusGone)
+			return
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -125,7 +128,7 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 	id := makeRandStringBytes(shortenedURLLength)
 	err = s.storage.Add(id, longURLStr, cookie.Value)
 	if err != nil {
-		if err == db.ErrConflict {
+		if err == models.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)

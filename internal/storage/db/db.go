@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
 	"github.com/google/uuid"
@@ -13,8 +14,6 @@ import (
 	"go.uber.org/zap"
 	"time"
 )
-
-var ErrConflict = errors.New(`already exists`)
 
 type Database struct {
 	dbConnData string
@@ -69,7 +68,7 @@ func (db *Database) Add(key, value, cookie string) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-			return ErrConflict
+			return models.ErrConflict
 		}
 
 		logger.Log.Error("error while writing data to db", zap.Error(err))
@@ -93,17 +92,20 @@ func (db *Database) AddBatch(ctx context.Context, records []models.Record) error
 	return nil
 }
 
-func (db *Database) Get(key string) (string, bool) {
+func (db *Database) Get(key string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	rec, err := db.FindRecord(ctx, key)
 	if err != nil {
-		logger.Log.Error("db search query error", zap.Error(err))
-		return "", false
+		return "", fmt.Errorf("URL with the key \"%s\" is missing", key)
 	}
 
-	return rec.OriginalURL, true
+	if rec.DeletedFlag {
+		return "", models.ErrDeleted
+	}
+
+	return rec.OriginalURL, nil
 }
 
 func (db *Database) GetMode() int {
@@ -135,10 +137,10 @@ func (db *Database) HealthCheck() error {
 
 func (db *Database) FindRecord(ctx context.Context, value string) (models.Record, error) {
 	row := db.DB.QueryRowContext(ctx,
-		`SELECT uuid, short_url, origin_url FROM urls WHERE short_url=$1 LIMIT 1`, value)
+		`SELECT uuid, short_url, origin_url, is_deleted FROM urls WHERE short_url=$1 LIMIT 1`, value)
 
 	var rec models.Record
-	err := row.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL)
+	err := row.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL, &rec.DeletedFlag)
 	if err != nil {
 		return rec, err
 	}
@@ -148,10 +150,10 @@ func (db *Database) FindRecord(ctx context.Context, value string) (models.Record
 
 func (db *Database) FindRecordByOriginURL(ctx context.Context, value string) (models.Record, error) {
 	row := db.DB.QueryRowContext(ctx,
-		`SELECT uuid, short_url, origin_url FROM urls WHERE origin_url=$1 LIMIT 1`, value)
+		`SELECT uuid, short_url, origin_url, is_deleted FROM urls WHERE origin_url=$1 LIMIT 1`, value)
 
 	var rec models.Record
-	err := row.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL)
+	err := row.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL, &rec.DeletedFlag)
 	if err != nil {
 		return rec, err
 	}
@@ -193,7 +195,8 @@ func (db *Database) CreateDBScheme() error {
 												"uuid" VARCHAR,
 												"short_url" VARCHAR,
 												"origin_url" VARCHAR,
-												"user_id" INTEGER)`)
+												"user_id" INTEGER,
+												"is_deleted" BOOLEAN DEFAULT false)`)
 	if err != nil {
 		return err
 	}
@@ -240,7 +243,7 @@ func (db *Database) CloseStorage() error {
 
 func (db *Database) FindRecordsByUserID(ctx context.Context, userID int) (records []models.Record, err error) {
 	rows, err := db.DB.QueryContext(ctx,
-		"SELECT uuid, short_url, origin_url FROM urls WHERE user_id=$1", userID)
+		"SELECT uuid, short_url, origin_url, is_deleted FROM urls WHERE user_id=$1", userID)
 	if err != nil {
 		return
 	}
@@ -248,7 +251,7 @@ func (db *Database) FindRecordsByUserID(ctx context.Context, userID int) (record
 
 	for rows.Next() {
 		var rec models.Record
-		err = rows.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL)
+		err = rows.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL, &rec.DeletedFlag)
 		if err != nil {
 			return
 		}

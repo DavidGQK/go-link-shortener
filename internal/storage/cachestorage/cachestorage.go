@@ -32,9 +32,12 @@ func (s *CacheStor) AddBatch(_ context.Context, records []models.Record) error {
 	return nil
 }
 
-func (s *CacheStor) Get(key string) (string, bool) {
+func (s *CacheStor) Get(key string) (string, error) {
 	value, found := s.links[key]
-	return value, found
+	if !found {
+		return "", models.ErrDeleted
+	}
+	return value, nil
 }
 
 func (s *CacheStor) GetMode() int {

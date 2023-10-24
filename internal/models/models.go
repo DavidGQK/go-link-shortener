@@ -2,7 +2,11 @@ package models
 
 import (
 	"context"
+	"errors"
 )
+
+var ErrConflict = errors.New(`already exists`)
+var ErrDeleted = errors.New(`was deleted`)
 
 type RequestShortenLink struct {
 	URL string `json:"url"`
@@ -30,13 +34,14 @@ type Record struct {
 	UUID        string `json:"UUID"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	DeletedFlag bool   `json:"is_deleted"`
 }
 
 type StorageInterface interface {
 	Restore() error
 	Add(string, string, string) error
 	AddBatch(context.Context, []Record) error
-	Get(string) (string, bool)
+	Get(string) (string, error)
 	GetMode() int
 	GetByOriginURL(string) (string, error)
 	HealthCheck() error

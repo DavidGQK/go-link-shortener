@@ -34,9 +34,12 @@ func (s *TestStorage) AddBatch(_ context.Context, _ []models.Record) error {
 	return nil
 }
 
-func (s *TestStorage) Get(key string) (string, bool) {
+func (s *TestStorage) Get(key string) (string, error) {
 	value, found := s.links[key]
-	return value, found
+	if !found {
+		return "", models.ErrDeleted
+	}
+	return value, nil
 }
 
 func (s *TestStorage) GetMode() int {

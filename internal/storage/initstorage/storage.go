@@ -60,7 +60,7 @@ func (s *Storage) AddBatch(ctx context.Context, records []models.Record) error {
 	return s.storage.AddBatch(ctx, records)
 }
 
-func (s *Storage) Get(key string) (string, bool) {
+func (s *Storage) Get(key string) (string, error) {
 	return s.storage.Get(key)
 }
 

@@ -8,7 +8,7 @@ import (
 
 type repository interface {
 	Add(string, string, string) error
-	Get(string) (string, bool)
+	Get(string) (string, error)
 	HealthCheck() error
 	GetMode() int
 	AddBatch(context.Context, []models.Record) error

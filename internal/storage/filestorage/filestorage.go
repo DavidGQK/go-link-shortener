@@ -110,9 +110,12 @@ func (s *FStor) AddBatch(_ context.Context, records []models.Record) error {
 	return nil
 }
 
-func (s *FStor) Get(key string) (string, bool) {
+func (s *FStor) Get(key string) (string, error) {
 	value, found := s.links[key]
-	return value, found
+	if !found {
+		return "", models.ErrDeleted
+	}
+	return value, nil
 }
 
 func (s *FStor) GetMode() int {
