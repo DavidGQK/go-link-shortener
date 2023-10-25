@@ -66,8 +66,7 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 		resp = []byte(shortURLStr)
 	}
 
-	//w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(respStatus)
 	_, err = w.Write(resp)
 	if err != nil {
@@ -153,8 +152,7 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(respStatus)
 
 	encoder := json.NewEncoder(w)
@@ -222,8 +220,7 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	encoder := json.NewEncoder(w)
@@ -264,8 +261,7 @@ func (s *Server) GetUserUrlsAPI(w http.ResponseWriter, r *http.Request) {
 		response = append(response, respEl)
 	}
 
-	//w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	encoder := json.NewEncoder(w)
