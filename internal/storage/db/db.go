@@ -61,13 +61,11 @@ func (db *Database) Add(key, value, cookie string) error {
 	defer cancel()
 
 	user, err := db.FindUserByCookie(ctx, cookie)
-	fmt.Println("err in Add FindUserByCookie", err)
 	if err != nil {
 		return err
 	}
 
 	err = db.SaveRecord(ctx, &rec, user.UserID)
-	fmt.Println("err in Add SaveRecord", err)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
@@ -275,7 +273,6 @@ func (db *Database) FindUserByCookie(ctx context.Context, cookie string) (*model
 
 	var user models.User
 	err := row.Scan(&user.UserID, &user.Cookie)
-	fmt.Println("err in FindUserByCookie", err)
 	if err != nil {
 		return &user, err
 	}

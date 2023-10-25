@@ -45,11 +45,9 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 
 	id := makeRandStringBytes(shortenedURLLength)
 	err = s.storage.Add(id, longURLStr, cookie.Value)
-	fmt.Println("id, longURLStr, cookie.Value, err in PostShortenLink", id, longURLStr, cookie.Value, err)
 	if err != nil {
 		if err == models.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
-			fmt.Println("id, err", id, err)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -68,8 +66,8 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 		resp = []byte(shortURLStr)
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	//w.Header().Set("Content-Encoding", "gzip")
+	//w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(respStatus)
 	_, err = w.Write(resp)
 	if err != nil {
@@ -155,8 +153,8 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	//w.Header().Set("Content-Encoding", "gzip")
+	//w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(respStatus)
 
 	encoder := json.NewEncoder(w)
@@ -224,8 +222,8 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	//w.Header().Set("Content-Encoding", "gzip")
+	//w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusCreated)
 
 	encoder := json.NewEncoder(w)
@@ -266,8 +264,8 @@ func (s *Server) GetUserUrlsAPI(w http.ResponseWriter, r *http.Request) {
 		response = append(response, respEl)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	//w.Header().Set("Content-Encoding", "gzip")
+	//w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusOK)
 
 	encoder := json.NewEncoder(w)
@@ -285,7 +283,7 @@ func (s *Server) DeleteUserUrls(writer http.ResponseWriter, request *http.Reques
 		http.Error(writer, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	fmt.Println(urls[0])
+
 	userCookie, err := request.Cookie("shortener_session")
 	if err != nil {
 		logger.Log.Error(err)
