@@ -91,3 +91,7 @@ func (s *Storage) CreateUser(ctx context.Context) (*models.User, error) {
 func (s *Storage) UpdateUser(ctx context.Context, id int, cookie string) error {
 	return s.storage.UpdateUser(ctx, id, cookie)
 }
+
+func (s *Storage) DeleteUserURLs(ctx context.Context, message models.DeletedURLMessage) error {
+	return s.storage.DeleteUserURLs(ctx, message)
+}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"github.com/DavidGQK/go-link-shortener/internal/config"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
 )
@@ -37,7 +38,7 @@ func (s *TestStorage) AddBatch(_ context.Context, _ []models.Record) error {
 func (s *TestStorage) Get(key string) (string, error) {
 	value, found := s.links[key]
 	if !found {
-		return "", models.ErrDeleted
+		return "", errors.New("key not found")
 	}
 	return value, nil
 }
@@ -67,5 +68,9 @@ func (s *TestStorage) CreateUser(_ context.Context) (*models.User, error) {
 }
 
 func (s *TestStorage) UpdateUser(_ context.Context, _ int, _ string) error {
+	return nil
+}
+
+func (s *TestStorage) DeleteUserURLs(_ context.Context, _ models.DeletedURLMessage) error {
 	return nil
 }

@@ -35,7 +35,15 @@ type Record struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 	DeletedFlag bool   `json:"is_deleted"`
+	UserID      int    `json:"user_id"`
 }
+
+type DeletedURLMessage struct {
+	UserCookie string
+	ShortURLs  []string
+}
+
+type RequestDeletedUserURLS []string
 
 type StorageInterface interface {
 	Restore() error
@@ -50,6 +58,7 @@ type StorageInterface interface {
 	FindUserByID(context.Context, int) (*User, error)
 	CreateUser(context.Context) (*User, error)
 	UpdateUser(context.Context, int, string) error
+	DeleteUserURLs(context.Context, DeletedURLMessage) error
 }
 
 type User struct {

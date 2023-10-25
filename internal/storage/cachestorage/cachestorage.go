@@ -35,7 +35,7 @@ func (s *CacheStor) AddBatch(_ context.Context, records []models.Record) error {
 func (s *CacheStor) Get(key string) (string, error) {
 	value, found := s.links[key]
 	if !found {
-		return "", models.ErrDeleted
+		return "", errors.New("key not found")
 	}
 	return value, nil
 }
@@ -60,18 +60,22 @@ func (s *CacheStor) CloseStorage() error {
 	return nil
 }
 
-func (s *CacheStor) GetUserRecords(ctx context.Context, cookie string) ([]models.Record, error) {
+func (s *CacheStor) GetUserRecords(_ context.Context, _ string) ([]models.Record, error) {
 	return nil, errors.New("not database mode")
 }
 
-func (s *CacheStor) FindUserByID(ctx context.Context, userID int) (*models.User, error) {
+func (s *CacheStor) FindUserByID(_ context.Context, _ int) (*models.User, error) {
 	return nil, errors.New("not database mode")
 }
 
-func (s *CacheStor) CreateUser(ctx context.Context) (*models.User, error) {
+func (s *CacheStor) CreateUser(_ context.Context) (*models.User, error) {
 	return nil, errors.New("not database mode")
 }
 
-func (s *CacheStor) UpdateUser(ctx context.Context, id int, cookie string) error {
+func (s *CacheStor) UpdateUser(_ context.Context, _ int, _ string) error {
+	return errors.New("not database mode")
+}
+
+func (s *CacheStor) DeleteUserURLs(_ context.Context, _ models.DeletedURLMessage) error {
 	return errors.New("not database mode")
 }

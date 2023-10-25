@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+	"strings"
 	"time"
 )
 
@@ -60,11 +61,13 @@ func (db *Database) Add(key, value, cookie string) error {
 	defer cancel()
 
 	user, err := db.FindUserByCookie(ctx, cookie)
+	fmt.Println("err in Add FindUserByCookie", err)
 	if err != nil {
 		return err
 	}
 
 	err = db.SaveRecord(ctx, &rec, user.UserID)
+	fmt.Println("err in Add SaveRecord", err)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
@@ -272,6 +275,7 @@ func (db *Database) FindUserByCookie(ctx context.Context, cookie string) (*model
 
 	var user models.User
 	err := row.Scan(&user.UserID, &user.Cookie)
+	fmt.Println("err in FindUserByCookie", err)
 	if err != nil {
 		return &user, err
 	}
@@ -326,4 +330,74 @@ func (db *Database) CreateUser(ctx context.Context) (*models.User, error) {
 func (db *Database) UpdateUser(ctx context.Context, id int, cookie string) error {
 	_, err := db.DB.ExecContext(ctx, `UPDATE users SET cookie=$1 WHERE id=$2`, cookie, id)
 	return err
+}
+
+func (db *Database) FindRecordsBatchByShortURL(ctx context.Context, urls []string) (records []models.Record, err error) {
+	params := "{" + strings.Join(urls, ",") + "}"
+
+	rows, err := db.DB.QueryContext(ctx,
+		"SELECT uuid, short_url, origin_url, user_id, is_deleted FROM urls WHERE short_url = ANY($1::text[]);",
+		params,
+	)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var rec models.Record
+		err = rows.Scan(&rec.UUID, &rec.ShortURL, &rec.OriginalURL, &rec.UserID, &rec.DeletedFlag)
+		if err != nil {
+			return
+		}
+
+		records = append(records, rec)
+	}
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (db *Database) DeleteBatchRecords(ctx context.Context, records []models.Record) error {
+	var urls []string
+
+	for _, rec := range records {
+		urls = append(urls, rec.ShortURL)
+	}
+
+	params := "{" + strings.Join(urls, ",") + "}"
+
+	_, err := db.DB.ExecContext(ctx, "UPDATE urls SET is_deleted=true WHERE short_url = ANY($1::text[]);",
+		params)
+	return err
+}
+
+func (db *Database) DeleteUserURLs(ctx context.Context, message models.DeletedURLMessage) error {
+	user, err := db.FindUserByCookie(ctx, message.UserCookie)
+	if err != nil {
+		return err
+	}
+	userID := user.UserID
+
+	var records, deletedRecords []models.Record
+
+	records, err = db.FindRecordsBatchByShortURL(ctx, message.ShortURLs)
+	if err != nil {
+		return err
+	}
+
+	for _, rec := range records {
+		if rec.UserID == userID {
+			deletedRecords = append(deletedRecords, rec)
+		}
+	}
+
+	if len(deletedRecords) == 0 {
+		return nil
+	}
+
+	return db.DeleteBatchRecords(ctx, deletedRecords)
 }

@@ -37,10 +37,27 @@ func (s *Server) CookieMiddleware(h http.HandlerFunc) http.HandlerFunc {
 				Name:  "shortener_session",
 				Value: newCookie,
 			})
-		} else if !isCookieValid(cookie.Value, s.storage) && path == "/api/user/urls" {
-			logger.Log.Error("invalid cookie", zap.Error(err))
-			http.Error(w, "invalid cookie", http.StatusUnauthorized)
-			return
+		} else if !isCookieValid(cookie.Value, s.storage) {
+			if path == "/api/user/urls" {
+				logger.Log.Error("invalid cookie", zap.Error(err))
+				http.Error(w, "invalid cookie", http.StatusUnauthorized)
+				return
+			}
+
+			newCookie, err := createNewCookie(s.storage)
+			if err != nil {
+				logger.Log.Error("create cookie error", zap.Error(err))
+				http.Error(w, "Internal Backend Error", http.StatusInternalServerError)
+				return
+			}
+			http.SetCookie(w, &http.Cookie{
+				Name:  "shortener_session",
+				Value: newCookie,
+			})
+			r.AddCookie(&http.Cookie{
+				Name:  "shortener_session",
+				Value: newCookie,
+			})
 		}
 		h.ServeHTTP(w, r)
 	}

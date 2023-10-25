@@ -45,9 +45,11 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 
 	id := makeRandStringBytes(shortenedURLLength)
 	err = s.storage.Add(id, longURLStr, cookie.Value)
+	fmt.Println("id, longURLStr, cookie.Value, err in PostShortenLink", id, longURLStr, cookie.Value, err)
 	if err != nil {
 		if err == models.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
+			fmt.Println("id, err", id, err)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -67,6 +69,7 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
+	//w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(respStatus)
 	_, err = w.Write(resp)
 	if err != nil {
@@ -153,6 +156,7 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	//w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(respStatus)
 
 	encoder := json.NewEncoder(w)
@@ -221,6 +225,7 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	//w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusCreated)
 
 	encoder := json.NewEncoder(w)
@@ -262,6 +267,7 @@ func (s *Server) GetUserUrlsAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	//w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusOK)
 
 	encoder := json.NewEncoder(w)
@@ -269,6 +275,30 @@ func (s *Server) GetUserUrlsAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Backend Error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (s *Server) DeleteUserUrls(writer http.ResponseWriter, request *http.Request) {
+	var urls models.RequestDeletedUserURLS
+
+	decoder := json.NewDecoder(request.Body)
+	if err := decoder.Decode(&urls); err != nil {
+		http.Error(writer, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	fmt.Println(urls[0])
+	userCookie, err := request.Cookie("shortener_session")
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(writer, "Invalid cookie", http.StatusUnauthorized)
+		return
+	}
+
+	s.DeletedURLsChan <- models.DeletedURLMessage{
+		ShortURLs:  urls,
+		UserCookie: userCookie.Value,
+	}
+
+	writer.WriteHeader(http.StatusAccepted)
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
