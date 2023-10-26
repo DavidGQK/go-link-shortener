@@ -52,15 +52,15 @@ func (s *Storage) Restore() error {
 	return s.storage.Restore()
 }
 
-func (s *Storage) Add(key, value string) error {
-	return s.storage.Add(key, value)
+func (s *Storage) Add(key, value, cookie string) error {
+	return s.storage.Add(key, value, cookie)
 }
 
 func (s *Storage) AddBatch(ctx context.Context, records []models.Record) error {
 	return s.storage.AddBatch(ctx, records)
 }
 
-func (s *Storage) Get(key string) (string, bool) {
+func (s *Storage) Get(key string) (string, error) {
 	return s.storage.Get(key)
 }
 
@@ -74,4 +74,24 @@ func (s *Storage) GetByOriginURL(originURL string) (string, error) {
 
 func (s *Storage) HealthCheck() error {
 	return s.storage.HealthCheck()
+}
+
+func (s *Storage) GetUserRecords(ctx context.Context, cookie string) ([]models.Record, error) {
+	return s.storage.GetUserRecords(ctx, cookie)
+}
+
+func (s *Storage) FindUserByID(ctx context.Context, userID int) (*models.User, error) {
+	return s.storage.FindUserByID(ctx, userID)
+}
+
+func (s *Storage) CreateUser(ctx context.Context) (*models.User, error) {
+	return s.storage.CreateUser(ctx)
+}
+
+func (s *Storage) UpdateUser(ctx context.Context, id int, cookie string) error {
+	return s.storage.UpdateUser(ctx, id, cookie)
+}
+
+func (s *Storage) DeleteUserURLs(ctx context.Context, message models.DeletedURLMessage) error {
+	return s.storage.DeleteUserURLs(ctx, message)
 }

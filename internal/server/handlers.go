@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/DavidGQK/go-link-shortener/internal/logger"
 	"github.com/DavidGQK/go-link-shortener/internal/models"
-	"github.com/DavidGQK/go-link-shortener/internal/storage/db"
 	"github.com/DavidGQK/go-link-shortener/internal/storage/initstorage"
 	"io"
 	"math/rand"
@@ -38,10 +37,16 @@ func (s *Server) PostShortenLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := makeRandStringBytes(shortenedURLLength)
-	err = s.storage.Add(id, longURLStr)
+	cookie, err := r.Cookie("shortener_session")
 	if err != nil {
-		if err == db.ErrConflict {
+		http.Error(w, "User unauthorized", http.StatusBadRequest)
+		return
+	}
+
+	id := makeRandStringBytes(shortenedURLLength)
+	err = s.storage.Add(id, longURLStr, cookie.Value)
+	if err != nil {
+		if err == models.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -79,7 +84,7 @@ func (s *Server) GetContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if longURLStr, ok := s.storage.Get(id); ok {
+	if longURLStr, err := s.storage.Get(id); err == nil {
 		w.Header().Set("Location", longURLStr)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		_, err := w.Write([]byte(longURLStr))
@@ -88,6 +93,10 @@ func (s *Server) GetContent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		if err == models.ErrDeleted {
+			http.Error(w, "URL was deleted", http.StatusGone)
+			return
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -110,10 +119,16 @@ func (s *Server) PostAPIShortenLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := makeRandStringBytes(shortenedURLLength)
-	err := s.storage.Add(id, longURLStr)
+	cookie, err := r.Cookie("shortener_session")
 	if err != nil {
-		if err == db.ErrConflict {
+		http.Error(w, "User unauthorized", http.StatusBadRequest)
+		return
+	}
+
+	id := makeRandStringBytes(shortenedURLLength)
+	err = s.storage.Add(id, longURLStr, cookie.Value)
+	if err != nil {
+		if err == models.ErrConflict {
 			id, err = s.storage.GetByOriginURL(longURLStr)
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -213,6 +228,71 @@ func (s *Server) PostAPIShortenBatch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+func (s *Server) GetUserUrlsAPI(w http.ResponseWriter, r *http.Request) {
+	userCookie, err := r.Cookie("shortener_session")
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(w, "Invalid cookie", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	records, err := s.storage.GetUserRecords(ctx, userCookie.Value)
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(w, "Internal Backend Error", http.StatusInternalServerError)
+		return
+	}
+	if len(records) == 0 {
+		http.Error(w, "User doesn't have urls", http.StatusNoContent)
+		return
+	}
+
+	response := models.ResponseUserURLs{}
+	for _, rec := range records {
+		respEl := models.ResponseUserURL{
+			ShortURL:    fmt.Sprintf("%s/%s", s.config.ShortURLBase, rec.ShortURL),
+			OriginalURL: rec.OriginalURL,
+		}
+		response = append(response, respEl)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(response); err != nil {
+		http.Error(w, "Internal Backend Error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Server) DeleteUserUrls(writer http.ResponseWriter, request *http.Request) {
+	var urls models.RequestDeletedUserURLS
+
+	decoder := json.NewDecoder(request.Body)
+	if err := decoder.Decode(&urls); err != nil {
+		http.Error(writer, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	userCookie, err := request.Cookie("shortener_session")
+	if err != nil {
+		logger.Log.Error(err)
+		http.Error(writer, "Invalid cookie", http.StatusUnauthorized)
+		return
+	}
+
+	s.DeletedURLsChan <- models.DeletedURLMessage{
+		ShortURLs:  urls,
+		UserCookie: userCookie.Value,
+	}
+
+	writer.WriteHeader(http.StatusAccepted)
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"

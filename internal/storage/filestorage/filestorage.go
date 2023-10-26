@@ -79,7 +79,7 @@ func (s *FStor) Restore() error {
 	return nil
 }
 
-func (s *FStor) Add(key, value string) error {
+func (s *FStor) Add(key, value, _ string) error {
 	id := uuid.NewString()
 	rec := models.Record{
 		UUID:        id,
@@ -97,7 +97,7 @@ func (s *FStor) Add(key, value string) error {
 	return nil
 }
 
-func (s *FStor) AddBatch(ctx context.Context, records []models.Record) error {
+func (s *FStor) AddBatch(_ context.Context, records []models.Record) error {
 	for _, rec := range records {
 		err := s.dataWriter.WriteData(&rec)
 		if err != nil {
@@ -110,16 +110,19 @@ func (s *FStor) AddBatch(ctx context.Context, records []models.Record) error {
 	return nil
 }
 
-func (s *FStor) Get(key string) (string, bool) {
+func (s *FStor) Get(key string) (string, error) {
 	value, found := s.links[key]
-	return value, found
+	if !found {
+		return "", errors.New("key not found")
+	}
+	return value, nil
 }
 
 func (s *FStor) GetMode() int {
 	return s.mode
 }
 
-func (s *FStor) GetByOriginURL(originURL string) (string, error) {
+func (s *FStor) GetByOriginURL(_ string) (string, error) {
 	return "", errors.New("not database mode")
 }
 
@@ -129,4 +132,24 @@ func (s *FStor) HealthCheck() error {
 
 func (s *FStor) CloseStorage() error {
 	return s.dataWriter.Close()
+}
+
+func (s *FStor) GetUserRecords(_ context.Context, _ string) ([]models.Record, error) {
+	return nil, errors.New("not database mode")
+}
+
+func (s *FStor) FindUserByID(_ context.Context, _ int) (*models.User, error) {
+	return nil, errors.New("not database mode")
+}
+
+func (s *FStor) CreateUser(_ context.Context) (*models.User, error) {
+	return nil, errors.New("not database mode")
+}
+
+func (s *FStor) UpdateUser(_ context.Context, _ int, _ string) error {
+	return errors.New("not database mode")
+}
+
+func (s *FStor) DeleteUserURLs(_ context.Context, _ models.DeletedURLMessage) error {
+	return errors.New("not database mode")
 }
